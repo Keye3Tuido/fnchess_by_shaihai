@@ -140,14 +140,29 @@ class SeedCrypto {
             bs.writeBits(0, paddingBits);
         }
 
-        // 7. 计算签名并追加
+        // 7. 生成随机盐（4字节）
+        const salt = new Uint8Array(4);
+        if (window.crypto && window.crypto.getRandomValues) {
+            window.crypto.getRandomValues(salt);
+        } else {
+            // 降级方案：使用Math.random（不够安全但能用）
+            for (let i = 0; i < 4; i++) {
+                salt[i] = Math.floor(Math.random() * 256);
+            }
+        }
+
+        // 8. 计算签名（包含盐）
         const dataBytes = bs.toBytes();
-        const sig = this._computeSignature(dataBytes);
+        const saltedData = new Uint8Array([...salt, ...dataBytes]);
+        const sig = this._computeSignature(saltedData);
         bs.writeBits(sig, 32);
 
-        // XOR加密 + Base64
+        // 9. XOR加密
         const encrypted = this._xorEncrypt(bs.toBytes());
-        return this._bytesToBase64(encrypted);
+
+        // 10. 拼接盐和密文：[盐4字节][密文]
+        const final = new Uint8Array([...salt, ...encrypted]);
+        return this._bytesToBase64(final);
     }
 
     /**
@@ -155,7 +170,15 @@ class SeedCrypto {
      */
     decrypt(seed) {
         try {
-            const encrypted = this._base64ToBytes(seed);
+            const allBytes = this._base64ToBytes(seed);
+
+            // 1. 提取盐（前4字节）
+            const salt = allBytes.slice(0, 4);
+
+            // 2. 提取密文
+            const encrypted = allBytes.slice(4);
+
+            // 3. XOR解密
             const bytes = this._xorDecrypt(encrypted);
             const bs = new BitStream(bytes);
 
@@ -218,10 +241,11 @@ class SeedCrypto {
                 bs.readBits(paddingBits);
             }
 
-            // 验证签名
+            // 验证签名（包含盐）
             const dataByteLen = Math.ceil(bs.bitPos / 8);
             const dataBytes = bytes.slice(0, dataByteLen);
-            const expectedSig = this._computeSignature(dataBytes);
+            const saltedData = new Uint8Array([...salt, ...dataBytes]);
+            const expectedSig = this._computeSignature(saltedData);
             const providedSig = bs.readBits(32) >>> 0; // 转为无符号
 
             if (providedSig !== expectedSig) {

@@ -175,13 +175,19 @@ class UIController {
         }
         this.initStartSelectors();
         this.refreshStartSelectorDisplay();
-        
+
         // 绑定模式切换按钮
         if (this.modeLocalBtn && this.modeAiBtn && this.modeCampaignBtn && this.modeTestBtn) {
             this.modeLocalBtn.addEventListener('click', () => this.selectMode('local'));
             this.modeAiBtn.addEventListener('click', () => this.selectMode('ai'));
             this.modeCampaignBtn.addEventListener('click', () => this.selectMode('campaign'));
             this.modeTestBtn.addEventListener('click', () => this.selectMode('test'));
+        }
+
+        // 绑定编辑器模式按钮
+        this.modeEditorBtn = document.getElementById('mode-editor');
+        if (this.modeEditorBtn) {
+            this.modeEditorBtn.addEventListener('click', () => this.selectMode('editor'));
         }
 
         // AI 管理面板按钮
@@ -465,6 +471,7 @@ class UIController {
         this.modeAiBtn.classList.toggle('active', this.selectedMode === 'ai');
         this.modeCampaignBtn.classList.toggle('active', this.selectedMode === 'campaign');
         this.modeTestBtn.classList.toggle('active', this.selectedMode === 'test');
+        if (this.modeEditorBtn) this.modeEditorBtn.classList.toggle('active', this.selectedMode === 'editor');
 
         if (this.modeAiBtn) {
             this.modeAiBtn.disabled = false;
@@ -473,7 +480,7 @@ class UIController {
             this.modeAiBtn.title = '';
         }
 
-        const lockSelectors = this.selectedMode === 'campaign' || this.selectedMode === 'test';
+        const lockSelectors = this.selectedMode === 'campaign' || this.selectedMode === 'test' || this.selectedMode === 'editor';
         this.setStartSelectorsEnabled(!lockSelectors);
         [this.roundStepper, this.difficultyStepper].forEach(el => {
             if (!el) return;
@@ -600,6 +607,7 @@ class UIController {
             this.modeAiBtn.classList.remove('active');
             this.modeCampaignBtn.classList.remove('active');
             this.modeTestBtn.classList.remove('active');
+            if (this.modeEditorBtn) this.modeEditorBtn.classList.remove('active');
             this.modeHint.textContent = '本地对战：两位玩家轮流操作';
             if (this.campaignPanel) this.campaignPanel.style.display = 'none';
             this.restoreBattleUI();
@@ -608,6 +616,7 @@ class UIController {
             this.modeLocalBtn.classList.remove('active');
             this.modeCampaignBtn.classList.remove('active');
             this.modeTestBtn.classList.remove('active');
+            if (this.modeEditorBtn) this.modeEditorBtn.classList.remove('active');
             this.modeHint.textContent = '人机对战：你将对抗AI Summa';
             if (this.campaignPanel) this.campaignPanel.style.display = 'none';
             this.restoreBattleUI();
@@ -616,6 +625,7 @@ class UIController {
             this.modeLocalBtn.classList.remove('active');
             this.modeAiBtn.classList.remove('active');
             this.modeTestBtn.classList.remove('active');
+            if (this.modeEditorBtn) this.modeEditorBtn.classList.remove('active');
             this.modeHint.textContent = '闯关模式：通关解锁下一关';
             if (this.campaignPanel) this.campaignPanel.style.display = 'none';
             this.setStartSelectorsEnabled(false);
@@ -625,7 +635,18 @@ class UIController {
             this.modeLocalBtn.classList.remove('active');
             this.modeAiBtn.classList.remove('active');
             this.modeCampaignBtn.classList.remove('active');
+            if (this.modeEditorBtn) this.modeEditorBtn.classList.remove('active');
             this.modeHint.textContent = '测试模式：自由绘图，已绘制函数会保留在画布上';
+            if (this.campaignPanel) this.campaignPanel.style.display = 'none';
+            this.setStartSelectorsEnabled(false);
+            this.restoreBattleUI();
+        } else if (mode === 'editor') {
+            if (this.modeEditorBtn) this.modeEditorBtn.classList.add('active');
+            this.modeLocalBtn.classList.remove('active');
+            this.modeAiBtn.classList.remove('active');
+            this.modeCampaignBtn.classList.remove('active');
+            this.modeTestBtn.classList.remove('active');
+            this.modeHint.textContent = '关卡编辑器：创建并导出自定义关卡';
             if (this.campaignPanel) this.campaignPanel.style.display = 'none';
             this.setStartSelectorsEnabled(false);
             this.restoreBattleUI();
@@ -1262,6 +1283,10 @@ class UIController {
         
         // 以下键盘输入只在 input_function 阶段响应
         if (phase !== 'input_function') {
+            return;
+        }
+        // 编辑器编辑模式下禁止键盘输入函数
+        if (this.levelEditor?.isActive && this.levelEditor.editMode === 'edit') {
             return;
         }
         
@@ -2507,7 +2532,9 @@ class UIController {
     updateCampaignDrawDelayToggleVisibility() {
         const wrap = document.getElementById('campaign-draw-delay-toggle');
         if (!wrap) return;
-        wrap.style.display = this.gameController?.gameMode === 'campaign' ? 'inline-flex' : 'none';
+        const isCampaignLike = this.gameController?.gameMode === 'campaign'
+            || (this.levelEditor?.isActive && this.levelEditor.editMode === 'verify');
+        wrap.style.display = isCampaignLike ? 'inline-flex' : 'none';
     }
 
     updateCampaignDrawDelayToggle() {
@@ -2583,8 +2610,10 @@ class UIController {
         // 1. 渲染用采样（标准精度）- 等待绘制完成
         await this.renderer.drawFunction(expression, true);
 
-        // 闯关模式：图像绘制完成后额外延迟一小段时间再进行后续判定与反馈
-        if (this.gameController && this.gameController.gameMode === 'campaign' && this.campaignDrawDelay > 0) {
+        // 闯关模式或编辑器验证模式：图像绘制完成后额外延迟一小段时间再进行后续判定与反馈
+        const isCampaignLike = (this.gameController && this.gameController.gameMode === 'campaign')
+            || (this.levelEditor?.isActive && this.levelEditor.editMode === 'verify');
+        if (isCampaignLike && this.campaignDrawDelay > 0) {
             await new Promise(resolve => setTimeout(resolve, this.campaignDrawDelay));
         }
 
@@ -2626,18 +2655,42 @@ class UIController {
      * 显示评估结果
      */
     showEvaluationResult(data) {
+        // 编辑器验证模式：使用单人模式提示
+        if (this.levelEditor?.isActive && this.levelEditor.editMode === 'verify') {
+            let message = '';
+            if (data.hitForbidden) {
+                message = `❌ 函数进入禁止区！`;
+                this.flashGrid('forbidden');
+            } else if (data.hitTarget) {
+                if (data.targetCount > 1) {
+                    message = `✅ 命中全部 ${data.targetCount} 个目标！函数类型: ${data.functionType.type}`;
+                } else {
+                    message = `✅ 命中目标！函数类型: ${data.functionType.type}`;
+                }
+                this.flashGrid('target');
+            } else {
+                if (data.targetCount > 1 && data.hitCount > 0) {
+                    message = `❌ 只命中 ${data.hitCount}/${data.targetCount} 个目标`;
+                } else {
+                    message = `❌ 未命中目标！`;
+                }
+            }
+            this.showMessage(message, data.hitTarget && !data.hitForbidden ? 'success' : 'error');
+            return;
+        }
+
         // 获取当前构建函数的玩家
         const state = this.gameController.getGameState();
         let constructorPlayer = state.currentPlayer;
-        
+
         // 人机模式：玩家B显示为Summa
         let playerDisplay = `玩家${constructorPlayer}`;
         if (state.gameMode === 'ai' && constructorPlayer === 'B') {
             playerDisplay = 'Summa';
         }
-        
+
         let message = '';
-        
+
         if (data.hitForbidden) {
             message = `❌ ${playerDisplay}的函数进入禁止区！扣1分`;
             this.flashGrid('forbidden');
@@ -2798,11 +2851,13 @@ class UIController {
      * 处理退出按钮点击（根据模式决定是否显示气泡框）
      */
     handleExitClick() {
+        // 编辑器模式：显示确认弹窗
+        if (this.levelEditor?.isActive) {
+            this.showExitConfirm();
         // 测试模式直接退出，不显示气泡框
-        if (this.gameController.isTestMode()) {
+        } else if (this.gameController.isTestMode()) {
             this.handleExit();
         } else {
-            // 普通模式显示确认气泡框
             this.showExitConfirm();
         }
     }
@@ -2813,6 +2868,10 @@ class UIController {
     showExitConfirm() {
         if (window.audioManager) window.audioManager.playClick();
         if (this.exitPopover) {
+            const p = this.exitPopover.querySelector('p');
+            if (p) p.textContent = this.levelEditor?.isActive
+                ? '确定要退出关卡编辑器吗？'
+                : '确定要退出当前对局吗？';
             this.exitPopover.classList.add('visible');
         }
     }
@@ -2845,6 +2904,11 @@ class UIController {
         if (this.gameController.gameMode === 'campaign') {
             this.returnCampaignToDifficulty();
             return;
+        }
+
+        // 编辑器模式：先清理编辑器UI再走测试模式退出
+        if (this.levelEditor?.isActive) {
+            this.levelEditor.deactivate();
         }
 
         // 如果是测试模式，执行退出测试逻辑
@@ -2962,6 +3026,13 @@ class UIController {
         // 闯关模式：进入关卡选择界面（难度选择）
         if (this.selectedMode === 'campaign') {
             this.openCampaignUI();
+            return;
+        }
+
+        // 编辑器模式：启动关卡编辑器
+        if (this.selectedMode === 'editor') {
+            this.hideModal(this.startModal);
+            this.startLevelEditor();
             return;
         }
 
@@ -4163,8 +4234,8 @@ class UIController {
         this.messageElement.textContent = message;
         this.messageElement.style.opacity = '1';
         
-        // 测试模式下：显示容器并渐隐消息
-        if (this.gameController.isTestMode()) {
+        // 测试模式或编辑器模式下：显示容器并渐隐消息
+        if (this.gameController.isTestMode() || this.levelEditor?.isActive) {
             if (this.messagePanel) this.messagePanel.classList.add('visible');
             this.messageElement.className = 'message';
             
@@ -4345,6 +4416,23 @@ class UIController {
             'euler': '欧拉公式'
         };
         return names[type] || type;
+    }
+
+    /**
+     * 启动关卡编辑器
+     */
+    startLevelEditor() {
+        // 初始化编辑器扩展（如果还没有）
+        if (!this.levelEditor) {
+            this.levelEditor = new LevelEditorExtension(
+                this.gameController,
+                this,
+                this.gridSystem
+            );
+        }
+
+        // 激活编辑器
+        this.levelEditor.activate();
     }
 }
 

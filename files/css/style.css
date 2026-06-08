@@ -1201,7 +1201,8 @@ body::before {
     box-shadow: 0 4px 8px rgba(59, 130, 246, 0.18);
 }
 
-.element-btn.locked {
+.element-btn.locked,
+.element-btn.editor-locked {
     background: rgba(107, 114, 128, 0.2);
     color: #6b7280;
     border-color: rgba(107, 114, 128, 0.3);

@@ -187,6 +187,10 @@ var AutoSolver = (function() {
             return adaptAdd(l, B('*', B('*', C('i'), C('i')), r));
         }
         if (o === '+' && il('+')) {
+            if (!il('-')) {
+                if (il('i')) { console.warn('[AutoSolver] 无法替换 +'); return B(o, l, r); }
+                return B('-', l, B('*', B('*', C('i'), C('i')), r));
+            }
             if (il('ln')) { console.warn('[AutoSolver] 无法替换 +'); return B(o, l, r); }
             return F('ln', B('*', B('^', C('e'), l), B('^', C('e'), r)));
         }

@@ -337,7 +337,8 @@ class FunctionParser {
         if (/^\d+$/.test(element)) {
             return expression.includes(element);
         }
-        const regex = new RegExp(`\\b${element}\\b`, 'i');
+        const escaped = element.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`\\b${escaped}\\b`, 'i');
         return regex.test(expression);
     }
 

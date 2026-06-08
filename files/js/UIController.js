@@ -4189,14 +4189,16 @@ class UIController {
         this.phaseHintElement.textContent = hint;
         this.confirmBtn.textContent = confirmText;
         this.confirmBtn.disabled = false;
-        
-        // 更新棋盘范围
-        const rangeChanged = this.gridSystem.updateRange(state.currentRound);
-        // 如果 range 发生了扩大，立即重新采样所有历史函数（只做一次，不在每帧 draw 里做）
-        if (rangeChanged) {
-            this.refreshHistoryFunctionPoints();
-            // 采样完成后立即重绘，确保历史图像在回合开始时就可见，而不是等待下一次点击
-            this.gridSystem.draw();
+
+        // 更新棋盘范围（编辑器验证模式不更新范围，保持用户设置的缩放）
+        if (!this.levelEditor?.isActive || this.levelEditor.editMode !== 'verify') {
+            const rangeChanged = this.gridSystem.updateRange(state.currentRound);
+            // 如果 range 发生了扩大，立即重新采样所有历史函数（只做一次，不在每帧 draw 里做）
+            if (rangeChanged) {
+                this.refreshHistoryFunctionPoints();
+                // 采样完成后立即重绘，确保历史图像在回合开始时就可见，而不是等待下一次点击
+                this.gridSystem.draw();
+            }
         }
     }
     

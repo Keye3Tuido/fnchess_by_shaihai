@@ -1262,7 +1262,12 @@ class UIController {
                 return;
             }
         }
-        
+
+        // 编辑器编辑模式下禁止键盘输入
+        if (this.levelEditor?.isActive && this.levelEditor.editMode === 'edit') {
+            return;
+        }
+
         // 回车键确认：在 select_target / set_forbidden / set_locks / input_function 阶段都可用
         if (key === 'Enter') {
             e.preventDefault();

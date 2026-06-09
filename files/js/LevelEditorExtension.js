@@ -229,9 +229,15 @@ class LevelEditorExtension {
         this.gridSystem.range = this.gridSystem.gridSize / 2;
         this.gridSystem.resize();
 
-        // 添加缩放功能
+        // 解锁地图大小（编辑模式允许缩放）
+        this.gridSystem.isCampaignFixedRange = false;
+
+        // 显示并添加缩放功能
+        const existingZoom = document.getElementById('zoom-controls');
+        if (existingZoom) existingZoom.style.display = '';
         this.uiController.addZoomButtons();
         this.uiController.addWheelZoomSupport();
+        this.uiController.unlockZoomButtons();
 
         // 更新缩放显示
         this.uiController.updateZoomDisplay(this.gridSystem.range);
@@ -266,6 +272,15 @@ class LevelEditorExtension {
         this.uiController.parser.lockedElements = [...this.lockedElements];
         this.uiController.initDraggableElements();
         this.uiController.clearExpression();
+
+        // 锁定地图大小（验证模式禁用缩放）
+        this.gridSystem.isCampaignFixedRange = true;
+        this.gridSystem.fixedCampaignRange = this.gridSystem.range;
+
+        // 隐藏并禁用缩放控件
+        const zoomControls = document.getElementById('zoom-controls');
+        if (zoomControls) zoomControls.style.display = 'none';
+        this.uiController.lockZoomButtons();
 
         this._refreshGrid(); this._refreshHint();
         if (this.uiController.exitBtn) this.uiController.exitBtn.textContent = '退出编辑器';
@@ -404,6 +419,8 @@ class LevelEditorExtension {
         // 恢复正常游戏状态
         this.gameController.campaignState = { active: false, levelPack: null, totalLevels: 0, currentLevelId: 1 };
         this.gameController.difficulty = 'normal';
+        // 解锁地图大小
+        this.gridSystem.isCampaignFixedRange = false;
         // 恢复原始的 UIController 事件监听器
         if (this._originalCampaignResultCallback) {
             this.gameController.callbacks['campaignLevelResult'] = this._originalCampaignResultCallback;

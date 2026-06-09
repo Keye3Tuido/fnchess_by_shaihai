@@ -23,6 +23,8 @@ class RandomChallengeMode {
         this.isActive = false;
         this.currentLevel = null;
         this.originalTokens = 0;
+        // 解锁地图大小
+        this.gridSystem.isCampaignFixedRange = false;
         if (this.uiController.confirmBtn) {
             this.uiController.confirmBtn.textContent = '确认目标';
         }
@@ -178,6 +180,10 @@ class RandomChallengeMode {
         this.gridSystem.range = levelData.mapSize / 2;
         this.gridSystem.resize();
 
+        // 锁定地图大小（禁用缩放）
+        this.gridSystem.isCampaignFixedRange = true;
+        this.gridSystem.fixedCampaignRange = this.gridSystem.range;
+
         this.gameController.initGame(1, 'test', 'test');
 
         this.gameController.difficulty = 'easy';
@@ -205,11 +211,12 @@ class RandomChallengeMode {
             this.uiController.exitBtn.textContent = '退出随机关卡';
         }
 
-        // 隐藏缩放控件
+        // 隐藏并禁用缩放控件
         const zoomControls = document.getElementById('zoom-controls');
         if (zoomControls) {
             zoomControls.style.display = 'none';
         }
+        this.uiController.lockZoomButtons();
 
         this.uiController.updateLockedElements();
         this.uiController.phaseHintElement.textContent = '输入函数表达式';

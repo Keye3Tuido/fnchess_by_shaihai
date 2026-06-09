@@ -3829,16 +3829,16 @@ class UIController {
         // 创建新的滚轮事件处理器
         this.wheelHandler = (e) => {
             e.preventDefault();
-            
+
             // 如果正在绘制，不响应滚轮
             if (this.renderer.isDrawing) {
                 return;
             }
-            
+
             const delta = e.deltaY > 0 ? 1 : -1;
-            const wheelStep = 1; // 滚轮步长为 1，比按钮的 5 更小
+            const wheelStep = 5; // 滚轮步长为 5，与按钮保持一致
             let newRange;
-            
+
             if (delta > 0) {
                 // 向下滚动，放大坐标系（范围增加）
                 newRange = this.adjustRange(wheelStep);
@@ -3846,10 +3846,10 @@ class UIController {
                 // 向上滚动，缩小坐标系（范围减小）
                 newRange = this.adjustRange(-wheelStep);
             }
-            
+
             // 更新显示
             this.updateZoomDisplay(newRange);
-            
+
             // 重绘所有函数
             this.redrawAllTestFunctions();
         };
@@ -3857,20 +3857,35 @@ class UIController {
         // 绑定滚轮事件到 Canvas
         this.gridSystem.canvas.addEventListener('wheel', this.wheelHandler, { passive: false });
     }
-    
+
+    /**
+     * 移除滚轮缩放支持
+     */
+    removeWheelZoomSupport() {
+        if (this.wheelHandler) {
+            this.gridSystem.canvas.removeEventListener('wheel', this.wheelHandler);
+            this.wheelHandler = null;
+        }
+    }
+
     /**
      * 调整坐标系范围（支持任意步长）
      * @param {number} step - 步长（正数放大，负数缩小）
      * @returns {number} 新的范围值
      */
     adjustRange(step) {
+        // 如果地图大小被锁定，直接返回当前 range
+        if (this.gridSystem.isCampaignFixedRange) {
+            return this.gridSystem.range;
+        }
+
         const newRange = this.gridSystem.range + step;
         // 严格限制在最小值和最大值之间
         const clampedRange = Math.max(
             this.gridSystem.minRange,
             Math.min(newRange, this.gridSystem.maxRange)
         );
-        
+
         if (clampedRange !== this.gridSystem.range) {
             this.gridSystem.range = clampedRange;
             this.gridSystem.gridSize = clampedRange * 2;

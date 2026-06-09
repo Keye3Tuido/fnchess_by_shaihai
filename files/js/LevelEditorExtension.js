@@ -30,7 +30,6 @@ class LevelEditorExtension {
         this.lockedElements = [];
         this.solutionVerified = false;
         this.solutionTokens = 0;
-        this._evalIntercepted = false;
 
         this.gameController.initGame(1, 'test', 'test');
 
@@ -39,6 +38,16 @@ class LevelEditorExtension {
             this._bindCanvasEvents();
             this.switchToEditMode();
         }, 150);
+    }
+
+    handleResult(data) {
+        if (data.pass) {
+            this.solutionTokens = this._countTokens(this.uiController.currentExpression || '');
+            this.solutionVerified = true;
+            setTimeout(() => { this._resetToInputPhase(); this._showSeedDialog(); }, 0);
+        } else {
+            setTimeout(() => this._resetToInputPhase(), 0);
+        }
     }
 
     _buildEditorUI() {
@@ -216,9 +225,16 @@ class LevelEditorExtension {
         if (this.uiController.exitBtn) this.uiController.exitBtn.textContent = '退出编辑器';
         this.uiController.updateCampaignDrawDelayToggleVisibility();
 
+        // 重置缩放到默认值
+        this.gridSystem.range = this.gridSystem.gridSize / 2;
+        this.gridSystem.resize();
+
         // 添加缩放功能
         this.uiController.addZoomButtons();
         this.uiController.addWheelZoomSupport();
+
+        // 更新缩放显示
+        this.uiController.updateZoomDisplay(this.gridSystem.range);
     }
 
     switchToVerifyMode() {
@@ -236,6 +252,7 @@ class LevelEditorExtension {
         this.gameController.difficulty = 'easy';
         this.gameController.campaignState = {
             active: true,
+            isEditorVerify: true,
             levelPack: { levels: [] },
             totalLevels: 1,
             currentLevelId: 0
@@ -251,7 +268,6 @@ class LevelEditorExtension {
         this.uiController.clearExpression();
 
         this._refreshGrid(); this._refreshHint();
-        this._interceptCampaignResult();
         if (this.uiController.exitBtn) this.uiController.exitBtn.textContent = '退出编辑器';
         this.uiController.showMessage('验证模式：构建函数表达式，提交后判定是否通关');
         this.uiController.updateCampaignDrawDelayToggleVisibility();
@@ -320,28 +336,6 @@ class LevelEditorExtension {
         }
     }
 
-    _interceptCampaignResult() {
-        if (this._evalIntercepted) return;
-        this._evalIntercepted = true;
-        // 保存原始的 UIController 监听器
-        this._originalCampaignResultCallback = this.gameController.callbacks['campaignLevelResult'];
-        this.gameController.on('campaignLevelResult', (data) => {
-            if (!this.isActive || this.editMode !== 'verify') {
-                // 编辑器未激活或非验证模式：调用原始的 UIController 处理逻辑
-                if (this._originalCampaignResultCallback) {
-                    this._originalCampaignResultCallback.call(this.uiController, data);
-                }
-                return;
-            }
-            if (data.pass) {
-                this.solutionTokens = this._countTokens(this.uiController.currentExpression || '');
-                this.solutionVerified = true;
-                setTimeout(() => { this._resetToInputPhase(); this._showSeedDialog(); }, 0);
-            } else {
-                setTimeout(() => this._resetToInputPhase(), 0);
-            }
-        });
-    }
 
     _resetToInputPhase() {
         this.gameController.resetRoundState();

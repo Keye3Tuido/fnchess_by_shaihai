@@ -14,12 +14,17 @@ class UIController {
         // 初始化AI控制器
         this.aiController = new AIController(gameController, gridSystem);
         this.aiController.uiController = this; // 设置UIController引用
-        
+
         // 初始化 Summa 角色
         if (typeof SummaCharacter !== 'undefined') {
             window.summaCharacter = new SummaCharacter('summa-container');
         }
-        
+
+        // 初始化随机关卡模式
+        if (typeof RandomChallengeMode !== 'undefined') {
+            this.randomChallenge = new RandomChallengeMode(gameController, this, gridSystem);
+        }
+
         // AI触发队列
         this.aiTriggerQueue = [];
         this.isProcessingAITrigger = false;
@@ -124,6 +129,7 @@ class UIController {
         this.modeLocalBtn = document.getElementById('mode-local');
         this.modeAiBtn = document.getElementById('mode-ai');
         this.modeCampaignBtn = document.getElementById('mode-campaign');
+        this.modeRandomBtn = document.getElementById('mode-random');
         this.modeTestBtn = document.getElementById('mode-test');
         this.modeHint = document.getElementById('mode-hint');
         this.selectedMode = 'local'; // 默认本地对战
@@ -188,6 +194,11 @@ class UIController {
         this.modeEditorBtn = document.getElementById('mode-editor');
         if (this.modeEditorBtn) {
             this.modeEditorBtn.addEventListener('click', () => this.selectMode('editor'));
+        }
+
+        // 绑定随机关卡模式按钮
+        if (this.modeRandomBtn) {
+            this.modeRandomBtn.addEventListener('click', () => this.selectMode('random'));
         }
 
         // AI 管理面板按钮
@@ -608,6 +619,7 @@ class UIController {
             this.modeCampaignBtn.classList.remove('active');
             this.modeTestBtn.classList.remove('active');
             if (this.modeEditorBtn) this.modeEditorBtn.classList.remove('active');
+            if (this.modeRandomBtn) this.modeRandomBtn.classList.remove('active');
             this.modeHint.textContent = '本地对战：两位玩家轮流操作';
             if (this.campaignPanel) this.campaignPanel.style.display = 'none';
             this.restoreBattleUI();
@@ -617,6 +629,7 @@ class UIController {
             this.modeCampaignBtn.classList.remove('active');
             this.modeTestBtn.classList.remove('active');
             if (this.modeEditorBtn) this.modeEditorBtn.classList.remove('active');
+            if (this.modeRandomBtn) this.modeRandomBtn.classList.remove('active');
             this.modeHint.textContent = '人机对战：你将对抗AI Summa';
             if (this.campaignPanel) this.campaignPanel.style.display = 'none';
             this.restoreBattleUI();
@@ -626,6 +639,7 @@ class UIController {
             this.modeAiBtn.classList.remove('active');
             this.modeTestBtn.classList.remove('active');
             if (this.modeEditorBtn) this.modeEditorBtn.classList.remove('active');
+            if (this.modeRandomBtn) this.modeRandomBtn.classList.remove('active');
             this.modeHint.textContent = '闯关模式：通关解锁下一关';
             if (this.campaignPanel) this.campaignPanel.style.display = 'none';
             this.setStartSelectorsEnabled(false);
@@ -636,6 +650,7 @@ class UIController {
             this.modeAiBtn.classList.remove('active');
             this.modeCampaignBtn.classList.remove('active');
             if (this.modeEditorBtn) this.modeEditorBtn.classList.remove('active');
+            if (this.modeRandomBtn) this.modeRandomBtn.classList.remove('active');
             this.modeHint.textContent = '测试模式：自由绘图，已绘制函数会保留在画布上';
             if (this.campaignPanel) this.campaignPanel.style.display = 'none';
             this.setStartSelectorsEnabled(false);
@@ -646,7 +661,19 @@ class UIController {
             this.modeAiBtn.classList.remove('active');
             this.modeCampaignBtn.classList.remove('active');
             this.modeTestBtn.classList.remove('active');
+            if (this.modeRandomBtn) this.modeRandomBtn.classList.remove('active');
             this.modeHint.textContent = '关卡编辑器：创建并导出自定义关卡';
+            if (this.campaignPanel) this.campaignPanel.style.display = 'none';
+            this.setStartSelectorsEnabled(false);
+            this.restoreBattleUI();
+        } else if (mode === 'random') {
+            if (this.modeRandomBtn) this.modeRandomBtn.classList.add('active');
+            this.modeLocalBtn.classList.remove('active');
+            this.modeAiBtn.classList.remove('active');
+            this.modeCampaignBtn.classList.remove('active');
+            this.modeTestBtn.classList.remove('active');
+            if (this.modeEditorBtn) this.modeEditorBtn.classList.remove('active');
+            this.modeHint.textContent = '随机关卡：挑战随机生成或导入种子的关卡';
             if (this.campaignPanel) this.campaignPanel.style.display = 'none';
             this.setStartSelectorsEnabled(false);
             this.restoreBattleUI();
@@ -863,6 +890,18 @@ class UIController {
 
         // 闯关：关卡结果与自动进入下一关/重试
         this.gameController.on('campaignLevelResult', (data) => {
+            // 阻止随机关卡和编辑器污染闯关记录
+            if (this.randomChallenge?.isActive &&
+                this.gameController.campaignState?.isRandomChallenge) {
+                this.randomChallenge.handleResult(data);
+                return;
+            }
+            if (this.levelEditor?.isActive &&
+                this.levelEditor.editMode === 'verify') {
+                this.levelEditor.handleResult(data);
+                return;
+            }
+
             this.refreshCampaignStartUI();
             const levelId = Number(data.levelId || this.campaignCurrentLevelId || 1);
             let isNewRecord = false;
@@ -1016,7 +1055,7 @@ class UIController {
             finishGameOver();
         });
     }
-    
+
     /**
      * 绑定 Summa 训练弹窗事件
      */
@@ -3038,6 +3077,15 @@ class UIController {
         if (this.selectedMode === 'editor') {
             this.hideModal(this.startModal);
             this.startLevelEditor();
+            return;
+        }
+
+        // 随机关卡模式：启动随机关卡
+        if (this.selectedMode === 'random') {
+            this.hideModal(this.startModal);
+            if (this.randomChallenge) {
+                this.randomChallenge.activate();
+            }
             return;
         }
 

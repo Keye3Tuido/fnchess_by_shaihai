@@ -830,7 +830,7 @@ class GameController {
         if (this.campaignState && this.campaignState.active) {
             const pass = !!this.roundState.hitTarget && !hitForbidden;
             const clearedMax = this.getCampaignProgress();
-            if (pass && this.currentRound > clearedMax) {
+            if (pass && this.currentRound > clearedMax && !this.campaignState.isRandomChallenge && !this.campaignState.isEditorVerify) {
                 this.setCampaignProgress(this.currentRound);
             }
             this.emit('campaignLevelResult', {

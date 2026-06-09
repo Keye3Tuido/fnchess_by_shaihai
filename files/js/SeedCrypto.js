@@ -13,7 +13,7 @@ class SeedCrypto {
         this.key = this._deriveKey();
         // 编辑器使用的gridSize档位（range: 5,10,15,...,50 对应 gridSize=range*2）
         this.MAP_SIZES = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
-        this.ELEMENTS = ['x','+','-','*','/','ln','sin','cos','tan','sqrt','abs','^','e','pi','i','!'];
+        this.ELEMENTS = ['x','+','-','*','/','ln','sin','cos','tan','sqrt','abs','^','e','pi','i','!','.'];
     }
 
     /**
@@ -122,13 +122,13 @@ class SeedCrypto {
             bs.writeBits(0, mapPadding);
         }
 
-        // 4. 锁定元素掩码(16bit)
+        // 4. 锁定元素掩码(32bit，支持最多32个元素)
         let lockMask = 0;
         for (const elem of (levelData.lockedElements || [])) {
             const idx = this.ELEMENTS.indexOf(elem);
             if (idx >= 0) lockMask |= (1 << idx);
         }
-        bs.writeBits(lockMask, 16);
+        bs.writeBits(lockMask, 32);
 
         // 5. token数(16bit，支持0-65535)
         bs.writeBits(levelData.solutionTokens, 16);
@@ -224,11 +224,15 @@ class SeedCrypto {
                 }
             }
 
-            // 读取锁定掩码
-            const lockMask = bs.readBits(16);
+            // 读取锁定掩码(32bit)
+            const lockMask = bs.readBits(32);
             const lockedElements = [];
-            for (let i = 0; i < 16; i++) {
-                if (lockMask & (1 << i)) lockedElements.push(this.ELEMENTS[i]);
+            for (let i = 0; i < 32; i++) {
+                if (lockMask & (1 << i)) {
+                    if (i < this.ELEMENTS.length) {
+                        lockedElements.push(this.ELEMENTS[i]);
+                    }
+                }
             }
 
             // 读取token数

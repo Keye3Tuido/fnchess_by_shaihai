@@ -246,6 +246,13 @@ class LevelEditorExtension {
     switchToVerifyMode() {
         if (this.targetCells.length === 0) { alert('请先添加至少一个目标格'); return; }
 
+        // 校验 lockedElements 合法性
+        const validation = RandomChallengeMode.validateLockedElements(this.lockedElements);
+        if (!validation.valid) {
+            alert('禁用列表不合法: ' + validation.reason);
+            return;
+        }
+
         this.editMode = 'verify';
         document.getElementById('editor-edit-btn')?.classList.remove('btn-primary');
         document.getElementById('editor-verify-btn')?.classList.add('btn-primary');
@@ -326,6 +333,11 @@ class LevelEditorExtension {
                 if (isLocked) btn.innerHTML += ' <span class="lock-icon">🔒</span>';
                 btn.title = isLocked ? '点击解锁' : '点击禁用';
                 btn.addEventListener('click', () => {
+                    // 括号不可禁用
+                    if (item.value === '(' || item.value === ')') {
+                        alert('括号不能被禁用');
+                        return;
+                    }
                     const allNumbers = ['0','1','2','3','4','5','6','7','8','9','π','e','i'];
                     const idx = this.lockedElements.indexOf(item.value);
                     if (idx >= 0) {
@@ -448,6 +460,12 @@ class LevelEditorExtension {
                 const d = this.crypto.decrypt(modal.querySelector('#seed-import-input').value.trim());
                 if (!d.mapSize || typeof d.mapSize !== 'number' || d.mapSize < 10) {
                     throw new Error('种子格式不正确');
+                }
+                // 校验 lockedElements 合法性
+                const validation = RandomChallengeMode.validateLockedElements(d.lockedElements);
+                if (!validation.valid) {
+                    alert('种子不合法: ' + validation.reason);
+                    return;
                 }
                 this.targetCells    = d.targetCells;
                 this.forbiddenCells = d.forbiddenCells;

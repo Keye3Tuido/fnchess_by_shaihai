@@ -106,9 +106,16 @@ class RandomChallengeMode {
         // 计算密度：(目标+禁止) / 总数
         const density = (targetCount + forbiddenCount) / N;
 
-        // 根据密度动态调整禁用概率：密度越高越难，禁用概率越低
-        // 密度0.01 -> 79%, 密度0.5 -> 6%
-        const lockProbability = Math.max(0.06, Math.min(0.8, 0.8 - density * 1.48));
+        // 难度越高（密度越大），禁用组数期望越少
+        // 密度低（简单棋盘）→ 多禁用来平衡；密度高（困难棋盘）→ 少禁用给玩家留工具
+        let groupCountDist; // 0~4 组的概率分布
+        if (density < 0.15) {
+            groupCountDist = [0.05, 0.15, 0.25, 0.30, 0.25]; // 期望 ≈ 2.55
+        } else if (density < 0.30) {
+            groupCountDist = [0.20, 0.25, 0.25, 0.20, 0.10]; // 期望 ≈ 1.75
+        } else {
+            groupCountDist = [0.35, 0.30, 0.20, 0.10, 0.05]; // 期望 ≈ 1.20
+        }
 
         const usedCells = new Set();
         const targetCells = [];
@@ -134,19 +141,52 @@ class RandomChallengeMode {
             }
         }
 
-        const lockableElements = ['ln', 'sin', 'tan', 'sqrt', 'abs', '!', '+', '-', '*', '/', '^', '.'];
-        let lockedElements = lockableElements.filter(() => Math.random() < lockProbability);
+        // ========== 分组权重禁用系统 ==========
+        // x 概率最低；0~9 次之；其余各组概率均等
+        // 括号不考虑（不在任何分组中）
+        const lockGroups = [
+            { elements: ['x'],                         weight: 0.03 },  // 最低
+            { elements: ['0','1','2','3','4','5','6','7','8','9'], weight: 0.10 },  // 次低
+            { elements: ['+', '-'],                    weight: 1.00 },
+            { elements: ['*', '/'],                    weight: 1.00 },
+            { elements: ['^', 'sqrt', 'abs'],          weight: 1.00 },
+            { elements: ['ln'],                        weight: 1.00 },
+            { elements: ['sin'],                       weight: 1.00 },
+            { elements: ['cos'],                       weight: 1.00 },
+            { elements: ['tan'],                       weight: 1.00 },
+            { elements: ['!'],                         weight: 1.00 },
+            { elements: ['.'],                         weight: 1.00 },
+            { elements: ['π'],                         weight: 1.00 },
+            { elements: ['e'],                         weight: 1.00 },
+            { elements: ['i'],                         weight: 1.00 },
+        ];
 
-        // 防止常数和x全锁：确保数字0-9或x至少有一个可用
-        const numbers = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
-        const allNumbersLocked = numbers.every(n => lockedElements.includes(n));
-        const xLocked = lockedElements.includes('x');
+        // 按分布随机抽取禁用组数（0~4）
+        const numGroups = this._weightedRandomIndex(groupCountDist);
 
-        if (allNumbersLocked && xLocked) {
-            // 随机解锁一个数字
-            const randomNum = numbers[Math.floor(Math.random() * numbers.length)];
-            lockedElements = lockedElements.filter(e => e !== randomNum);
+        // 加权无放回抽取分组
+        const selectedGroups = this._weightedRandomSelect(lockGroups, numGroups);
+
+        // 整组禁用
+        let lockedElements = [];
+        for (const g of selectedGroups) {
+            lockedElements.push(...g.elements);
         }
+
+        // 兜底：x 和常数(0-9) 不能全锁
+        const xGroup = lockGroups[0];
+        const digitsGroup = lockGroups[1];
+        if (selectedGroups.includes(xGroup) && selectedGroups.includes(digitsGroup)) {
+            // 随机保留一组
+            if (Math.random() < 0.5) {
+                lockedElements = lockedElements.filter(e => !digitsGroup.elements.includes(e));
+            } else {
+                lockedElements = lockedElements.filter(e => e !== 'x');
+            }
+        }
+
+        // 安全过滤：括号绝不出现在禁用列表
+        lockedElements = lockedElements.filter(e => e !== '(' && e !== ')');
 
         return {
             mapSize,
@@ -189,12 +229,22 @@ class RandomChallengeMode {
                 const seed = input.value.trim();
                 if (!seed) {
                     info.textContent = '';
+                    info.style.color = '#666';
                     return;
                 }
                 const data = this.crypto.decrypt(seed);
-                info.textContent = `目标格: ${data.targetCells.length}, 禁止格: ${data.forbiddenCells.length}, Token: ${data.solutionTokens || 0}`;
+                const validation = RandomChallengeMode.validateLockedElements(data.lockedElements);
+                let status = `目标格: ${data.targetCells.length}, 禁止格: ${data.forbiddenCells.length}, Token: ${data.solutionTokens || 0}`;
+                if (!validation.valid) {
+                    status += `\n⚠️ ${validation.reason}`;
+                    info.style.color = '#ef4444';
+                } else {
+                    info.style.color = '#666';
+                }
+                info.textContent = status;
             } catch (e) {
                 info.textContent = '无效种子';
+                info.style.color = '#666';
             }
         });
 
@@ -202,6 +252,11 @@ class RandomChallengeMode {
             try {
                 const seed = input.value.trim();
                 const data = this.crypto.decrypt(seed);
+                const validation = RandomChallengeMode.validateLockedElements(data.lockedElements);
+                if (!validation.valid) {
+                    alert('种子不合法: ' + validation.reason);
+                    return;
+                }
                 document.body.removeChild(modal);
                 this.isImportMode = true;
                 this.currentLevel = data;
@@ -420,5 +475,73 @@ class RandomChallengeMode {
             display.textContent = '最佳记录: 暂无';
             display.style.display = 'block';
         }
+    }
+
+    /**
+     * 按权重分布随机抽取一个索引（0 ~ weights.length-1）
+     */
+    _weightedRandomIndex(weights) {
+        const total = weights.reduce((s, w) => s + w, 0);
+        let r = Math.random() * total;
+        for (let i = 0; i < weights.length; i++) {
+            r -= weights[i];
+            if (r <= 0) return i;
+        }
+        return weights.length - 1;
+    }
+
+    /**
+     * 加权随机无放回抽取 num 个分组
+     */
+    _weightedRandomSelect(groups, num) {
+        if (num <= 0) return [];
+        if (num >= groups.length) return [...groups];
+
+        const remaining = groups.map((g, i) => ({ ...g, idx: i }));
+        const selected = [];
+
+        for (let k = 0; k < num; k++) {
+            const totalWeight = remaining.reduce((sum, g) => sum + g.weight, 0);
+            if (totalWeight <= 0) break;
+
+            let r = Math.random() * totalWeight;
+            let pickedIdx = 0;
+            for (let i = 0; i < remaining.length; i++) {
+                r -= remaining[i].weight;
+                if (r <= 0) { pickedIdx = i; break; }
+            }
+
+            selected.push(remaining[pickedIdx]);
+            remaining.splice(pickedIdx, 1);
+        }
+
+        return selected;
+    }
+
+    /**
+     * 校验 lockedElements 合法性（静态方法，供编辑器等外部调用）
+     * 规则：括号不可禁用；x 和常数(0-9) 不可同时全锁
+     * @returns {{ valid: boolean, reason?: string }}
+     */
+    static validateLockedElements(lockedElements) {
+        if (!lockedElements || !Array.isArray(lockedElements)) {
+            return { valid: false, reason: '数据格式错误' };
+        }
+
+        // 括号不可禁用
+        if (lockedElements.includes('(') || lockedElements.includes(')')) {
+            return { valid: false, reason: '括号不能被禁用' };
+        }
+
+        // x 和常数(0-9) 不能全锁
+        const digits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+        const xLocked = lockedElements.includes('x');
+        const allDigitsLocked = digits.every(d => lockedElements.includes(d));
+
+        if (xLocked && allDigitsLocked) {
+            return { valid: false, reason: 'x 和常数(0-9) 不能同时全部禁用' };
+        }
+
+        return { valid: true };
     }
 }

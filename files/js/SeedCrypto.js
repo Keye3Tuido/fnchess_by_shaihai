@@ -13,7 +13,7 @@ class SeedCrypto {
         this.key = this._deriveKey();
         // 编辑器使用的gridSize档位（range: 5,10,15,...,50 对应 gridSize=range*2）
         this.MAP_SIZES = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
-        this.ELEMENTS = ['x','+','-','*','/','ln','sin','cos','tan','sqrt','abs','^','e','pi','i','!','.'];
+        this.ELEMENTS = ['x','+','-','*','/','ln','sin','cos','tan','sqrt','abs','^','e','π','i','!','.','0','1','2','3','4','5','6','7','8','9'];
     }
 
     /**

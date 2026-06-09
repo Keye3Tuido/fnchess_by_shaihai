@@ -221,6 +221,7 @@ class RandomChallengeMode {
         this.uiController.updateLockedElements();
         this.uiController.phaseHintElement.textContent = '输入函数表达式';
         this.uiController.initDraggableElements();
+        this.uiController.updateCampaignDrawDelayToggleVisibility();
 
         setTimeout(() => {
             this.uiController.showMessage('随机关卡：构造函数通关');

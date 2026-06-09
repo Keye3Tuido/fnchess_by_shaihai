@@ -2577,7 +2577,8 @@ class UIController {
         const wrap = document.getElementById('campaign-draw-delay-toggle');
         if (!wrap) return;
         const isCampaignLike = this.gameController?.gameMode === 'campaign'
-            || (this.levelEditor?.isActive && this.levelEditor.editMode === 'verify');
+            || (this.levelEditor?.isActive && this.levelEditor.editMode === 'verify')
+            || this.randomChallenge?.isActive;
         wrap.style.display = isCampaignLike ? 'inline-flex' : 'none';
     }
 
@@ -2654,9 +2655,10 @@ class UIController {
         // 1. 渲染用采样（标准精度）- 等待绘制完成
         await this.renderer.drawFunction(expression, true);
 
-        // 闯关模式或编辑器验证模式：图像绘制完成后额外延迟一小段时间再进行后续判定与反馈
+        // 闯关模式或编辑器验证模式或随机关卡模式：图像绘制完成后额外延迟一小段时间再进行后续判定与反馈
         const isCampaignLike = (this.gameController && this.gameController.gameMode === 'campaign')
-            || (this.levelEditor?.isActive && this.levelEditor.editMode === 'verify');
+            || (this.levelEditor?.isActive && this.levelEditor.editMode === 'verify')
+            || this.randomChallenge?.isActive;
         if (isCampaignLike && this.campaignDrawDelay > 0) {
             await new Promise(resolve => setTimeout(resolve, this.campaignDrawDelay));
         }

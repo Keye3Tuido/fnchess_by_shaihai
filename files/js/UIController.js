@@ -2701,8 +2701,12 @@ class UIController {
      * 显示评估结果
      */
     showEvaluationResult(data) {
-        // 编辑器验证模式：使用单人模式提示
-        if (this.levelEditor?.isActive && this.levelEditor.editMode === 'verify') {
+        const state = this.gameController.getGameState();
+
+        // 编辑器验证 / 随机关卡 / 闯关模式：单人模式提示，不弹分数动画
+        if ((this.levelEditor?.isActive && this.levelEditor.editMode === 'verify') ||
+            this.randomChallenge?.isActive ||
+            state.campaignState?.active) {
             let message = '';
             if (data.hitForbidden) {
                 message = `❌ 函数进入禁止区！`;
@@ -2726,7 +2730,6 @@ class UIController {
         }
 
         // 获取当前构建函数的玩家
-        const state = this.gameController.getGameState();
         let constructorPlayer = state.currentPlayer;
 
         // 人机模式：玩家B显示为Summa

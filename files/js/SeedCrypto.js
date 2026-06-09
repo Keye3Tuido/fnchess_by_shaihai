@@ -60,13 +60,24 @@ class SeedCrypto {
 
     /**
      * 加密关卡数据为种子（二进制优化版）
+     * @param {Object} levelData - 关卡数据
+     * @param {Object} options - 选项 { allowZeroToken: boolean }
      */
-    encrypt(levelData) {
+    encrypt(levelData, options = {}) {
         if (!levelData.targetCells || levelData.targetCells.length === 0) {
             throw new Error('关卡必须包含至少一个目标格');
         }
-        if (!levelData.solutionTokens || levelData.solutionTokens <= 0) {
-            throw new Error('必须提供有效的解决方案');
+
+        // 默认要求有效解决方案，除非显式允许零token（随机关卡生成模式）
+        if (!options.allowZeroToken) {
+            if (!levelData.solutionTokens || levelData.solutionTokens <= 0) {
+                throw new Error('必须提供有效的解决方案');
+            }
+        } else {
+            // 允许零token时，确保字段存在
+            if (levelData.solutionTokens === undefined || levelData.solutionTokens === null) {
+                levelData.solutionTokens = 0;
+            }
         }
 
         const bs = new BitStream();

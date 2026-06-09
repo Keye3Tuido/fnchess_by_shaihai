@@ -12,10 +12,12 @@ class RandomChallengeMode {
         this.isActive = false;
         this.currentLevel = null;
         this.originalTokens = 0;
+        this.isImportMode = false;
     }
 
     activate() {
         this.isActive = true;
+        this._originalFixedCampaignRange = this.gridSystem.fixedCampaignRange;
         this._showModeSelection();
     }
 
@@ -23,8 +25,17 @@ class RandomChallengeMode {
         this.isActive = false;
         this.currentLevel = null;
         this.originalTokens = 0;
+        this.isImportMode = false;
         // 解锁地图大小
         this.gridSystem.isCampaignFixedRange = false;
+        // 恢复原始的闯关固定范围
+        this.gridSystem.fixedCampaignRange = this._originalFixedCampaignRange;
+        // 清理最佳记录显示
+        const display = document.getElementById('random-best-record');
+        if (display) display.remove();
+        // 清理游戏内按钮
+        const buttons = document.getElementById('random-ingame-buttons');
+        if (buttons) buttons.remove();
         if (this.uiController.confirmBtn) {
             this.uiController.confirmBtn.textContent = '确认目标';
         }
@@ -77,8 +88,27 @@ class RandomChallengeMode {
 
     _generateRandomLevel() {
         const mapSize = 10;
-        const targetCount = Math.floor(Math.random() * 20) + 1;
-        const forbiddenCount = Math.floor(Math.random() * 11);
+        const N = mapSize * mapSize; // 总格子数
+        const toDistribute = Math.floor((N - 1) / 2); // 只分配一半
+
+        // 随机分三份：a+1目标格，b禁止格，c空格
+        const rand1 = Math.random();
+        const rand2 = Math.random();
+        const splits = [rand1, rand2].sort((x, y) => x - y);
+
+        const a = Math.floor(splits[0] * toDistribute);
+        const b = Math.floor((splits[1] - splits[0]) * toDistribute);
+        // c = toDistribute - a - b (空格，不使用)
+
+        const targetCount = a + 1; // 至少1个目标格
+        const forbiddenCount = b;
+
+        // 计算密度：(目标+禁止) / 总数
+        const density = (targetCount + forbiddenCount) / N;
+
+        // 根据密度动态调整禁用概率：密度越高越难，禁用概率越低
+        // 密度0.01 -> 79%, 密度0.5 -> 6%
+        const lockProbability = Math.max(0.06, Math.min(0.8, 0.8 - density * 1.48));
 
         const usedCells = new Set();
         const targetCells = [];
@@ -105,7 +135,18 @@ class RandomChallengeMode {
         }
 
         const lockableElements = ['ln', 'sin', 'tan', 'sqrt', 'abs', '!', '+', '-', '*', '/', '^', '.'];
-        const lockedElements = lockableElements.filter(() => Math.random() < 0.3);
+        let lockedElements = lockableElements.filter(() => Math.random() < lockProbability);
+
+        // 防止常数和x全锁：确保数字0-9或x至少有一个可用
+        const numbers = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+        const allNumbersLocked = numbers.every(n => lockedElements.includes(n));
+        const xLocked = lockedElements.includes('x');
+
+        if (allNumbersLocked && xLocked) {
+            // 随机解锁一个数字
+            const randomNum = numbers[Math.floor(Math.random() * numbers.length)];
+            lockedElements = lockedElements.filter(e => e !== randomNum);
+        }
 
         return {
             mapSize,
@@ -117,6 +158,7 @@ class RandomChallengeMode {
     }
 
     _startRandomLevel() {
+        this.isImportMode = false;
         this.currentLevel = this._generateRandomLevel();
         this.originalTokens = 0;
         this._loadLevel(this.currentLevel);
@@ -161,6 +203,7 @@ class RandomChallengeMode {
                 const seed = input.value.trim();
                 const data = this.crypto.decrypt(seed);
                 document.body.removeChild(modal);
+                this.isImportMode = true;
                 this.currentLevel = data;
                 this.originalTokens = data.solutionTokens || 0;
                 this._loadLevel(data);
@@ -208,7 +251,7 @@ class RandomChallengeMode {
         this.uiController.hideBattleUI();
         this.uiController.confirmBtn.textContent = '提交答案';
         if (this.uiController.exitBtn) {
-            this.uiController.exitBtn.textContent = '退出随机关卡';
+            this.uiController.exitBtn.textContent = '退出关卡';
         }
 
         // 隐藏并禁用缩放控件
@@ -222,6 +265,13 @@ class RandomChallengeMode {
         this.uiController.phaseHintElement.textContent = '输入函数表达式';
         this.uiController.initDraggableElements();
         this.uiController.updateCampaignDrawDelayToggleVisibility();
+
+        // 添加最佳记录显示
+        this._createBestRecordDisplay();
+        this._updateBestRecordDisplay();
+
+        // 添加游戏内操作按钮
+        this._createInGameButtons();
 
         setTimeout(() => {
             this.uiController.showMessage('随机关卡：构造函数通关');
@@ -240,6 +290,10 @@ class RandomChallengeMode {
             this.originalTokens = currentTokens;
         }
 
+        // 更新最佳记录显示
+        this._updateBestRecordDisplay();
+
+        const newLevelBtnText = this.isImportMode ? '导入新的种子' : '新的随机关卡';
         const modal = document.createElement('div');
         modal.className = 'modal';
         modal.style.display = 'flex';
@@ -249,9 +303,10 @@ class RandomChallengeMode {
                 <p>Token 使用: ${currentTokens}</p>
                 ${improved ? '<p style="color: #4CAF50;">✨ 新记录！</p>' : ''}
                 <div style="display: flex; flex-direction: column; gap: 10px; margin: 20px 0;">
-                    <button id="random-new-level-btn" class="btn btn-primary">新的随机关卡</button>
+                    <button id="random-new-level-btn" class="btn btn-primary">${newLevelBtnText}</button>
                     <button id="random-retry-btn" class="btn">重试当前关卡</button>
                     <button id="random-copy-seed-btn" class="btn">📋 复制关卡种子</button>
+                    <button id="random-home-btn" class="btn btn-secondary">返回主界面</button>
                 </div>
             </div>
         `;
@@ -259,7 +314,11 @@ class RandomChallengeMode {
 
         modal.querySelector('#random-new-level-btn').onclick = () => {
             document.body.removeChild(modal);
-            this._startRandomLevel();
+            if (this.isImportMode) {
+                this._showImportDialog();
+            } else {
+                this._startRandomLevel();
+            }
         };
 
         modal.querySelector('#random-retry-btn').onclick = () => {
@@ -269,6 +328,13 @@ class RandomChallengeMode {
 
         modal.querySelector('#random-copy-seed-btn').onclick = () => {
             this._copySeedWithTokens();
+        };
+
+        modal.querySelector('#random-home-btn').onclick = () => {
+            document.body.removeChild(modal);
+            this.deactivate();
+            this.uiController.selectMode('local');
+            this.uiController.showModal(this.uiController.startModal);
         };
     }
 
@@ -282,12 +348,77 @@ class RandomChallengeMode {
         };
 
         try {
-            const seed = this.crypto.encrypt(seedData);
+            const seed = this.crypto.encrypt(seedData, { allowZeroToken: true });
             navigator.clipboard.writeText(seed).then(() => {
                 alert(`种子已复制 (Token: ${seedData.solutionTokens})`);
             });
         } catch (e) {
             alert('复制失败: ' + e.message);
+        }
+    }
+
+    _createBestRecordDisplay() {
+        // 移除旧的显示
+        const old = document.getElementById('random-best-record');
+        if (old) old.remove();
+
+        // 创建新的显示
+        const display = document.createElement('div');
+        display.id = 'random-best-record';
+        display.style.cssText = 'margin-bottom: 8px; padding: 8px; background: rgba(100, 181, 246, 0.15); border-radius: 6px; font-size: 14px; color: #64b5f6;';
+
+        const phaseHint = document.getElementById('phase-hint');
+        if (phaseHint && phaseHint.parentElement) {
+            phaseHint.parentElement.insertBefore(display, phaseHint);
+        }
+    }
+
+    _createInGameButtons() {
+        // 移除旧的按钮
+        const old = document.getElementById('random-ingame-buttons');
+        if (old) old.remove();
+
+        // 创建按钮容器
+        const container = document.createElement('div');
+        container.id = 'random-ingame-buttons';
+        container.style.cssText = 'display: flex; gap: 8px; margin-top: 8px;';
+
+        const buttonText = this.isImportMode ? '📥 导入种子' : '🎲 新关卡';
+        container.innerHTML = `
+            <button id="random-copy-seed-ingame-btn" class="btn btn-secondary btn-small">📋 复制种子</button>
+            <button id="random-new-ingame-btn" class="btn btn-secondary btn-small">${buttonText}</button>
+        `;
+
+        // 插入到phase-hint下方
+        const phaseHint = document.getElementById('phase-hint');
+        if (phaseHint && phaseHint.parentElement) {
+            phaseHint.parentElement.insertBefore(container, phaseHint.nextSibling);
+        }
+
+        // 绑定事件
+        document.getElementById('random-copy-seed-ingame-btn').onclick = () => {
+            this._copySeedWithTokens();
+        };
+
+        document.getElementById('random-new-ingame-btn').onclick = () => {
+            if (this.isImportMode) {
+                this._showImportDialog();
+            } else {
+                this._startRandomLevel();
+            }
+        };
+    }
+
+    _updateBestRecordDisplay() {
+        const display = document.getElementById('random-best-record');
+        if (!display) return;
+
+        if (this.originalTokens > 0) {
+            display.textContent = `最佳记录: ${this.originalTokens} Token`;
+            display.style.display = 'block';
+        } else {
+            display.textContent = '最佳记录: 暂无';
+            display.style.display = 'block';
         }
     }
 }

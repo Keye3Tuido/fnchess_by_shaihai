@@ -2957,6 +2957,11 @@ class UIController {
             this.levelEditor.deactivate();
         }
 
+        // 随机关卡模式：清理状态
+        if (this.randomChallenge?.isActive) {
+            this.randomChallenge.deactivate();
+        }
+
         // 如果是测试模式，执行退出测试逻辑
         if (this.gameController.isTestMode()) {
             this.exitTestMode();
@@ -3858,16 +3863,6 @@ class UIController {
         
         // 绑定滚轮事件到 Canvas
         this.gridSystem.canvas.addEventListener('wheel', this.wheelHandler, { passive: false });
-    }
-
-    /**
-     * 移除滚轮缩放支持
-     */
-    removeWheelZoomSupport() {
-        if (this.wheelHandler) {
-            this.gridSystem.canvas.removeEventListener('wheel', this.wheelHandler);
-            this.wheelHandler = null;
-        }
     }
 
     /**

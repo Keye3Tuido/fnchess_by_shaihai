@@ -2707,9 +2707,9 @@ class UIController {
                 this.flashGrid('forbidden');
             } else if (data.hitTarget) {
                 if (data.targetCount > 1) {
-                    message = `✅ 命中全部 ${data.targetCount} 个目标！函数类型: ${data.functionType.type}`;
+                    message = `✅ 命中全部 ${data.targetCount} 个目标！`;
                 } else {
-                    message = `✅ 命中目标！函数类型: ${data.functionType.type}`;
+                    message = `✅ 命中目标！`;
                 }
                 this.flashGrid('target');
             } else {

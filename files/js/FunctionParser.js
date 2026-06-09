@@ -35,8 +35,12 @@ class FunctionParser {
     // ========== 复数运算体系（与 geogebra-lite 同步） ==========
 
     toComplex(v) {
-        if (v && typeof v === 'object' && 're' in v && 'im' in v) return v;
-        return { re: Number(v), im: 0 };
+        if (v && typeof v === 'object' && 're' in v && 'im' in v) {
+            // 归一化 -0 → 0，避免 atan2(-0, neg) = -π 污染辐角分支
+            return { re: Object.is(v.re, -0) ? 0 : v.re, im: Object.is(v.im, -0) ? 0 : v.im };
+        }
+        const n = Number(v);
+        return { re: Object.is(n, -0) ? 0 : n, im: 0 };
     }
 
     cAdd(a, b) { a = this.toComplex(a); b = this.toComplex(b); return { re: a.re + b.re, im: a.im + b.im }; }

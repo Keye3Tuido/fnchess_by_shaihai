@@ -174,12 +174,12 @@ class RandomChallengeMode {
         }
 
         // 兜底：x 和常数(0-9) 不能全锁
-        const xGroup = lockGroups[0];
-        const digitsGroup = lockGroups[1];
-        if (selectedGroups.includes(xGroup) && selectedGroups.includes(digitsGroup)) {
+        const hasXGroup = selectedGroups.some(g => g.elements.includes('x'));
+        const hasDigitsGroup = selectedGroups.some(g => g.elements.some(e => /^[0-9]$/.test(e)));
+        if (hasXGroup && hasDigitsGroup) {
             // 随机保留一组
             if (Math.random() < 0.5) {
-                lockedElements = lockedElements.filter(e => !digitsGroup.elements.includes(e));
+                lockedElements = lockedElements.filter(e => !/^[0-9]$/.test(e));
             } else {
                 lockedElements = lockedElements.filter(e => e !== 'x');
             }

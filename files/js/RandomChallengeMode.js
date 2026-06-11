@@ -46,7 +46,7 @@ class RandomChallengeMode {
             this.handleWin();
         } else {
             setTimeout(() => {
-                this.uiController.clearExpression();
+                // this.uiController.clearExpression(); // 验证失败后不再自动清空输入
                 this.gameController.setPhase(this.gameController.phases.INPUT_FUNCTION);
             }, 900);
         }

@@ -46,7 +46,7 @@ class LevelEditorExtension {
             this.solutionVerified = true;
             setTimeout(() => { this._resetToInputPhase(); this._showSeedDialog(); }, 0);
         } else {
-            setTimeout(() => this._resetToInputPhase(), 0);
+            setTimeout(() => this._resetToInputPhase(true), 0);
         }
     }
 
@@ -364,14 +364,17 @@ class LevelEditorExtension {
     }
 
 
-    _resetToInputPhase() {
+    _resetToInputPhase(keepExpression = false) {
         this.gameController.resetRoundState();
         this.gameController.roundState.targetCells    = [...this.targetCells];
         this.gameController.roundState.forbiddenCells = [...this.forbiddenCells];
         this.gameController.roundState.lockedElements = [...this.lockedElements];
         this.gameController.currentPhase = this.gameController.phases.INPUT_FUNCTION;
         this.uiController.updatePhaseUI(this.gameController.phases.INPUT_FUNCTION);
-        this.uiController.clearExpression();
+        // this.uiController.clearExpression(); // 验证失败后不再自动清空输入，由 keepExpression 参数控制
+        if (!keepExpression) {
+            this.uiController.clearExpression();
+        }
         this.gridSystem.clearAll();
         this._refreshGrid();
     }

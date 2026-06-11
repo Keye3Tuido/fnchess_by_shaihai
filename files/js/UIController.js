@@ -940,7 +940,7 @@ class UIController {
                     if (data.pass) {
                         this.showCampaignVictory(data);
                     } else {
-                        this.clearExpression();
+                        // this.clearExpression(); // 验证失败后不再自动清空输入
                         this.gameController.setPhase(this.gameController.phases.INPUT_FUNCTION);
                     }
                 } catch (e) {

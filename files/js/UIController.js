@@ -491,7 +491,7 @@ class UIController {
             this.modeAiBtn.title = '';
         }
 
-        const lockSelectors = this.selectedMode === 'campaign' || this.selectedMode === 'test' || this.selectedMode === 'editor';
+        const lockSelectors = this.selectedMode === 'campaign' || this.selectedMode === 'test' || this.selectedMode === 'editor' || this.selectedMode === 'random';
         this.setStartSelectorsEnabled(!lockSelectors);
         [this.roundStepper, this.difficultyStepper].forEach(el => {
             if (!el) return;
@@ -597,8 +597,8 @@ class UIController {
         const isTest = mode === 'test';
         if (this.roundStepper) this.roundStepper.classList.remove('selector-change');
         if (this.difficultyStepper) this.difficultyStepper.classList.remove('selector-change');
-        // 闯关模式和测试模式都禁用回合数与难度选择，但开始按钮仍然可用
-        const lockSelectors = isCampaign || isTest;
+        // 闯关、测试、随机关卡、编辑器模式都禁用回合数与难度选择
+        const lockSelectors = isCampaign || isTest || mode === 'random' || mode === 'editor';
         if (this.roundStepper) {
             this.roundStepper.classList.toggle('disabled', lockSelectors);
         }

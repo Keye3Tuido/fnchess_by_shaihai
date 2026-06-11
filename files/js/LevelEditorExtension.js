@@ -176,14 +176,24 @@ class LevelEditorExtension {
     }
 
     _toggleTarget(cell) {
-        if (this.forbiddenCells.some(c => c.x === cell.x && c.y === cell.y)) return;
+        if (this.forbiddenCells.some(c => c.x === cell.x && c.y === cell.y)) {
+            this.forbiddenCells = this.forbiddenCells.filter(c => !(c.x === cell.x && c.y === cell.y));
+            this.targetCells.push(cell);
+            this.solutionVerified = false;
+            return;
+        }
         const idx = this.targetCells.findIndex(c => c.x === cell.x && c.y === cell.y);
         if (idx >= 0) this.targetCells.splice(idx, 1); else this.targetCells.push(cell);
         this.solutionVerified = false;
     }
 
     _toggleForbidden(cell) {
-        if (this.targetCells.some(c => c.x === cell.x && c.y === cell.y)) return;
+        if (this.targetCells.some(c => c.x === cell.x && c.y === cell.y)) {
+            this.targetCells = this.targetCells.filter(c => !(c.x === cell.x && c.y === cell.y));
+            this.forbiddenCells.push(cell);
+            this.solutionVerified = false;
+            return;
+        }
         const idx = this.forbiddenCells.findIndex(c => c.x === cell.x && c.y === cell.y);
         if (idx >= 0) this.forbiddenCells.splice(idx, 1); else this.forbiddenCells.push(cell);
         this.solutionVerified = false;
@@ -391,8 +401,8 @@ class LevelEditorExtension {
         if (!hint) return;
         if (this.editMode === 'edit') {
             hint.innerHTML = `<b>棋盘操作：</b><br>
-                左键：添加/删除目标格 🟩<br>
-                右键：添加/删除禁止格 🟥<br>
+                左键：添加/删除目标格 🟩（覆盖禁止格）<br>
+                右键：添加/删除禁止格 🟥（覆盖目标格）<br>
                 中键：删除格子<br>
                 <span style="opacity:.7;">目标格 <b>${this.targetCells.length}</b> 个，禁止格 <b>${this.forbiddenCells.length}</b> 个</span>`;
         } else {

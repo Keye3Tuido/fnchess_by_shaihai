@@ -10,7 +10,7 @@ class GameController {
         this.currentRound = 1;
         
         // 游戏模式
-        this.gameMode = 'local'; // 'local' 本地对战, 'ai' 人机对战, 'campaign' 闯关模式
+        this.gameMode = 'local'; // 'local' 本地对战, 'ai' 人机对战, 'campaign' 闯关模式, 'p2p' 联机对战
         
         // 难度设置
         this.difficulty = 'normal'; // easy, normal, hard, expert, test
@@ -44,6 +44,7 @@ class GameController {
         this.timeLimit = 40;
         this.remainingTime = 40;
         this.timerInterval = null;
+        this.p2pTimerSync = false; // P2P Guest：为 true 时停本地计时，等 Host 同步
         
         // 回合状态
         this.roundState = {
@@ -276,6 +277,63 @@ class GameController {
     }
     
     /**
+     * 检查是否为 P2P 联机模式
+     * @returns {boolean}
+     */
+    isP2PMode() {
+        return this.gameMode === 'p2p';
+    }
+
+    /**
+     * 处理来自远程对等方的操作
+     * @param {string} action - 操作类型
+     * @param {object} payload - 操作数据
+     */
+    applyRemoteAction(action, payload) {
+        if (!this.isP2PMode()) return;
+
+        switch (action) {
+            case 'select_target':
+                if (payload && payload.cell) {
+                    this.selectTargetCell(payload.cell);
+                }
+                break;
+            case 'confirm_target':
+                this.confirmTargetSelection();
+                break;
+            case 'add_forbidden':
+                if (payload && payload.cell) {
+                    this.addForbiddenCell(payload.cell);
+                }
+                break;
+            case 'confirm_forbidden':
+                this.confirmForbiddenSelection();
+                break;
+            case 'lock_element':
+                if (payload && payload.element) {
+                    this.addLockedElement(payload.element);
+                }
+                break;
+            case 'unlock_element':
+                if (payload && payload.element) {
+                    this.removeLockedElement(payload.element);
+                }
+                break;
+            case 'confirm_locks':
+                this.confirmLockSelection();
+                break;
+            case 'expression_change':
+                // 仅用于 UI 同步，不改变游戏状态
+                if (this.callbacks['remoteExpressionChange'] && payload) {
+                    this.callbacks['remoteExpressionChange'](payload.expression || '');
+                }
+                break;
+            default:
+                console.warn('[Game] 未知远程操作:', action);
+        }
+    }
+
+    /**
      * 重置游戏状态
      */
     resetGame() {
@@ -503,6 +561,8 @@ class GameController {
     startTimer() {
         // 测试模式/闯关模式不启动计时器
         if (this.isTestMode() || (this.campaignState && this.campaignState.active)) return;
+        // P2P Guest：等待 Host 同步，不启动本地计时
+        if (this.p2pTimerSync) return;
         
         this.stopTimer();
         this.remainingTime = this.timeLimit;
@@ -527,6 +587,15 @@ class GameController {
             clearInterval(this.timerInterval);
             this.timerInterval = null;
         }
+    }
+
+    /**
+     * P2P Guest：接收 Host 的计时同步
+     */
+    syncRemoteTimer(remainingTime) {
+        if (!this.p2pTimerSync) return;
+        this.remainingTime = remainingTime;
+        this.emit('timerUpdate', { remainingTime: this.remainingTime });
     }
     
     /**
@@ -714,6 +783,20 @@ class GameController {
         this.emit('elementLocked', { element, count: this.roundState.lockedElements.length });
         
         // 不再自动进入下一阶段，需要点击确认按钮
+        return true;
+    }
+    
+    /**
+     * 移除锁定元素
+     * @param {string} element - 元素
+     * @returns {boolean}
+     */
+    removeLockedElement(element) {
+        if (this.currentPhase !== this.phases.SET_LOCKS) return false;
+        const index = this.roundState.lockedElements.indexOf(element);
+        if (index === -1) return false;
+        this.roundState.lockedElements.splice(index, 1);
+        this.emit('elementUnlocked', { element, count: this.roundState.lockedElements.length });
         return true;
     }
     

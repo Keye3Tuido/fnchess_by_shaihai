@@ -155,6 +155,7 @@
                         <div class="mode-toggle mode-toggle-vertical">
                             <button class="mode-btn active" id="mode-local" data-mode="local">本地对战</button>
                             <button class="mode-btn" id="mode-ai" data-mode="ai">人机对战</button>
+                            <button class="mode-btn" id="mode-p2p" data-mode="p2p">联机对战</button>
                             <button class="mode-btn" id="mode-campaign" data-mode="campaign">闯关模式</button>
                             <button class="mode-btn" id="mode-test" data-mode="test">测试模式</button>
                             <button class="mode-btn" id="mode-random" data-mode="random">随机关卡</button>
@@ -354,6 +355,10 @@
     <!-- Ai和控制器 -->
     <script src="files/js/AIController.js"></script>
     <script src="files/js/GameController.js"></script>
+    <!-- P2P 联机对战 -->
+    <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script>if(typeof Peer==='undefined'){document.write('<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"><\/script>');}</script>
+    <script src="files/js/P2PController.js"></script>
     <script src="files/js/campaignLevels.js"></script>
     <script src="files/js/UIController.js"></script>
     <script src="files/js/SummaTrainer.js"></script>

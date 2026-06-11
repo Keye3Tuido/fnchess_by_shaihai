@@ -1839,16 +1839,44 @@ body::before {
     background: rgba(68, 88, 124, 0.24);
     box-shadow: 0 0 10px rgba(59, 130, 246, 0.2);
 }
+.mode-toggle .mode-btn[data-mode="p2p"] {
+    border-color: rgba(16, 185, 129, 0.42);
+    color: #a7f3d0;
+    background: rgba(52, 112, 88, 0.24);
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+}
 .mode-toggle .mode-btn[data-mode="campaign"] {
     border-color: rgba(34, 211, 238, 0.42);
     color: #b7d7dc;
     background: rgba(68, 102, 112, 0.24);
     box-shadow: 0 0 10px rgba(34, 211, 238, 0.2);
 }
+.mode-toggle .mode-btn[data-mode="test"] {
+    border-color: rgba(245, 158, 11, 0.42);
+    color: #fde68a;
+    background: rgba(120, 100, 52, 0.24);
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);
+}
+.mode-toggle .mode-btn[data-mode="random"] {
+    border-color: rgba(168, 85, 247, 0.42);
+    color: #c4b5fd;
+    background: rgba(100, 68, 128, 0.24);
+    box-shadow: 0 0 10px rgba(168, 85, 247, 0.2);
+}
+.mode-toggle .mode-btn[data-mode="editor"] {
+    border-color: rgba(251, 146, 60, 0.42);
+    color: #fdba74;
+    background: rgba(120, 88, 52, 0.24);
+    box-shadow: 0 0 10px rgba(251, 146, 60, 0.2);
+}
 
 .mode-toggle .mode-btn.active[data-mode="local"] { background: rgba(99, 102, 241, 0.26); color: #d7d8ff; box-shadow: 0 0 24px rgba(99,102,241,0.4); }
 .mode-toggle .mode-btn.active[data-mode="ai"] { background: rgba(59, 130, 246, 0.26); color: #dbeafe; box-shadow: 0 0 24px rgba(59,130,246,0.4); }
+.mode-toggle .mode-btn.active[data-mode="p2p"] { background: rgba(16, 185, 129, 0.26); color: #6ee7b7; box-shadow: 0 0 24px rgba(16,185,129,0.4); }
 .mode-toggle .mode-btn.active[data-mode="campaign"] { background: rgba(34, 211, 238, 0.24); color: #d6fbff; box-shadow: 0 0 24px rgba(34,211,238,0.4); }
+.mode-toggle .mode-btn.active[data-mode="test"] { background: rgba(245, 158, 11, 0.26); color: #fbbf24; box-shadow: 0 0 24px rgba(245,158,11,0.4); }
+.mode-toggle .mode-btn.active[data-mode="random"] { background: rgba(168, 85, 247, 0.26); color: #a78bfa; box-shadow: 0 0 24px rgba(168,85,247,0.4); }
+.mode-toggle .mode-btn.active[data-mode="editor"] { background: rgba(251, 146, 60, 0.26); color: #fb923c; box-shadow: 0 0 24px rgba(251,146,60,0.4); }
 
 .mode-btn {
     flex: 1;
@@ -3428,4 +3456,219 @@ body.device-mobile {
 .summa-dialog-input-buttons .btn {
     flex: 1;
     padding: 12px;
+}
+
+/* ========== P2P 联机对战样式 ========== */
+.p2p-room-content {
+    max-width: 420px;
+    text-align: center;
+}
+
+.p2p-room-content h2 {
+    margin-bottom: 16px;
+    font-size: 22px;
+    color: #f0f0f0;
+}
+
+/* 连接状态 */
+.p2p-status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 16px;
+    margin-bottom: 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.p2p-status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #6b7280;
+    flex-shrink: 0;
+}
+
+.p2p-status-dot.connecting,
+.p2p-status-dot.waiting {
+    background: #f59e0b;
+    animation: p2p-pulse 1.2s ease-in-out infinite;
+}
+
+.p2p-status-dot.connected {
+    background: #10b981;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+}
+
+.p2p-status-dot.error,
+.p2p-status-dot.disconnected {
+    background: #ef4444;
+}
+
+.p2p-status-dot.idle {
+    background: #6b7280;
+}
+
+@keyframes p2p-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.2); }
+}
+
+.p2p-status-text {
+    font-size: 14px;
+    color: #cbd5e1;
+}
+
+/* Tab 切换 */
+.p2p-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    padding: 4px;
+}
+
+.p2p-tab {
+    flex: 1;
+    padding: 10px 0;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: #94a3b8;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.p2p-tab.active {
+    background: rgba(99, 102, 241, 0.3);
+    color: #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.p2p-tab:hover:not(.active) {
+    background: rgba(255, 255, 255, 0.08);
+    color: #cbd5e1;
+}
+
+/* 描述文字 */
+.p2p-desc {
+    font-size: 14px;
+    color: #94a3b8;
+    margin-bottom: 16px;
+    line-height: 1.5;
+}
+
+/* 房间码显示 */
+.p2p-room-code-display {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    background: rgba(99, 102, 241, 0.15);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 12px;
+}
+
+.p2p-label {
+    font-size: 13px;
+    color: #94a3b8;
+}
+
+.p2p-room-code {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: 6px;
+    color: #e2e8f0;
+    font-family: 'Courier New', monospace;
+    text-shadow: 0 0 12px rgba(99, 102, 241, 0.4);
+}
+
+.p2p-copy-btn {
+    padding: 6px 14px !important;
+    font-size: 13px !important;
+}
+
+/* 输入框 */
+.p2p-input-group {
+    margin-bottom: 16px;
+}
+
+.p2p-room-input {
+    width: 100%;
+    max-width: 260px;
+    padding: 14px 18px;
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: 8px;
+    text-align: center;
+    text-transform: uppercase;
+    font-family: 'Courier New', monospace;
+    background: rgba(255, 255, 255, 0.06);
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    color: #e2e8f0;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.p2p-room-input:focus {
+    border-color: rgba(99, 102, 241, 0.5);
+    box-shadow: 0 0 12px rgba(99, 102, 241, 0.2);
+}
+
+.p2p-room-input::placeholder {
+    color: #475569;
+    font-size: 16px;
+    font-weight: 400;
+    letter-spacing: 2px;
+}
+
+/* 操作按钮 */
+.p2p-action-btn {
+    width: 100%;
+    max-width: 260px;
+    padding: 14px 0 !important;
+    font-size: 16px !important;
+    font-weight: 700 !important;
+}
+
+/* 提示 */
+.p2p-battle-hint {
+    margin-top: 16px;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+    line-height: 1.6;
+}
+
+.p2p-battle-hint small {
+    color: #64748b;
+    font-size: 12px;
+}
+
+.p2p-battle-hint strong {
+    color: #a5b4fc;
+}
+
+/* 移动端适配 */
+@media (max-width: 480px) {
+    .p2p-room-content {
+        max-width: 95vw;
+        padding: 16px;
+    }
+    .p2p-room-code {
+        font-size: 24px;
+        letter-spacing: 4px;
+    }
+    .p2p-room-input {
+        font-size: 22px;
+        letter-spacing: 6px;
+    }
 }

@@ -42,6 +42,17 @@ var AutoSolver = (function() {
     function F(n, a) { return { t: 'fn', name: n, arg: a }; }
     function C(n) { return { t: 'const', name: n }; }
 
+    // 负一 AST 生成器：按优先级 i*i → cos(π) → ln(1/e) → ln(e^cos(π))
+    function negOneAst() {
+        if (!il('i')) return B('*', C('i'), C('i'));
+        if (!il('cos') && !il('π')) return F('cos', C('pi'));
+        if (!il('ln') && !il('e')) {
+            if (!il('1') && !il('/')) return F('ln', B('/', N(1), C('e')));
+            if (!il('^') && !il('cos') && !il('π')) return F('ln', B('^', C('e'), F('cos', C('pi'))));
+        }
+        return null;
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     // § 经典路径：Dirac-delta 叠加
     // ─────────────────────────────────────────────────────────────────────────
@@ -117,10 +128,11 @@ var AutoSolver = (function() {
         for (var i = 0; i < s.length; i++) { if (il(s[i])) { need = true; break; } }
         if (!need && !needNeg) return nd;
         if (needNeg) {
-            if (il('i')) { console.warn('[AutoSolver] 无法生成负数：- 和 i 都被锁定'); return nd; }
+            var no = negOneAst();
+            if (!no) { console.warn('[AutoSolver] 无法生成负数：- / i / cos(π) / ln(1/e) 均被锁定'); return nd; }
             var absNode = need ? adaptDigits(N(Math.abs(v))) : N(Math.abs(v));
             if (absNode.t === 'num' && absNode.v === Math.abs(v) && need) absNode = buildInt(Math.abs(v));
-            return B('*', B('*', C('i'), C('i')), absNode);
+            return B('*', no, absNode);
         }
         for (var d = 1; d <= 3; d++) {
             var cand = Math.abs(v) + d, cs = String(cand), ok = true;
@@ -133,7 +145,11 @@ var AutoSolver = (function() {
             }
         }
         var an = buildInt(Math.abs(v));
-        return v < 0 ? B('*', B('*', C('i'), C('i')), an) : an;
+        if (v < 0) {
+            var noDig = negOneAst();
+            return noDig ? B('*', noDig, an) : B('*', B('*', C('i'), C('i')), an);
+        }
+        return an;
     }
 
     function adaptDecimal(v) {
@@ -151,14 +167,16 @@ var AutoSolver = (function() {
         if (node.t === 'num') {
             if (il('.') && !Number.isInteger(node.v)) return adaptTree(adaptDecimal(node.v));
             if (!Number.isInteger(node.v) && node.v < 0 && il('-')) {
-                if (il('i')) return node;
-                return adaptTree(B('*', B('*', C('i'), C('i')), N(-node.v)));
+                var noA1 = negOneAst();
+                if (!noA1) return node;
+                return adaptTree(B('*', noA1, N(-node.v)));
             }
             var nd = adaptDigits(node);
             if (nd !== node) return adaptTree(nd);
             if (node.v < 0 && il('-')) {
-                if (il('i')) return node;
-                return B('*', B('*', C('i'), C('i')), N(-node.v));
+                var noA2 = negOneAst();
+                if (!noA2) return node;
+                return B('*', noA2, N(-node.v));
             }
             return nd;
         }
@@ -179,17 +197,26 @@ var AutoSolver = (function() {
     function adaptOp(o, l, r) {
         if (o === '/' && il('/')) {
             if (il('^')) { console.warn('[AutoSolver] 无法替换 /'); return B(o, l, r); }
-            return B('*', l, B('^', r, adaptTree(il('-') ? B('*', B('*', C('i'), C('i')), N(1)) : B('-', N(0), N(1)))));
+            var expNode;
+            if (!il('-')) {
+                expNode = B('-', N(0), N(1));
+            } else {
+                var noDiv = negOneAst();
+                expNode = noDiv || B('-', N(0), N(1));
+            }
+            return B('*', l, B('^', r, adaptTree(expNode)));
         }
         if (o === '^' && il('^')) { console.warn('[AutoSolver] 无法替换 ^'); return B(o, l, r); }
         if (o === '-' && il('-')) {
-            if (il('i')) { console.warn('[AutoSolver] 无法替换 -'); return B(o, l, r); }
-            return adaptAdd(l, B('*', B('*', C('i'), C('i')), r));
+            var no = negOneAst();
+            if (!no) { console.warn('[AutoSolver] 无法替换 -：i / cos(π) / ln(1/e) 均被锁定'); return B(o, l, r); }
+            return adaptAdd(l, B('*', no, r));
         }
         if (o === '+' && il('+')) {
             if (!il('-')) {
-                if (il('i')) { console.warn('[AutoSolver] 无法替换 +'); return B(o, l, r); }
-                return B('-', l, B('*', B('*', C('i'), C('i')), r));
+                var noPlus = negOneAst();
+                if (!noPlus) { console.warn('[AutoSolver] 无法替换 +'); return B(o, l, r); }
+                return B('-', l, B('*', noPlus, r));
             }
             if (il('ln')) { console.warn('[AutoSolver] 无法替换 +'); return B(o, l, r); }
             return F('ln', B('*', B('^', C('e'), l), B('^', C('e'), r)));
@@ -209,12 +236,13 @@ var AutoSolver = (function() {
         if (node.t === 'num') {
             if (il('.') && !Number.isInteger(node.v)) return adaptTree(adaptDecimal(node.v));
             if (!Number.isInteger(node.v) && node.v < 0 && il('-')) {
-                if (il('i')) return node;
-                return adaptTree(B('*', B('*', C('i'), C('i')), N(-node.v)));
+                var noT1 = negOneAst();
+                if (!noT1) return node;
+                return adaptTree(B('*', noT1, N(-node.v)));
             }
             var nd = adaptDigits(node);
             if (nd !== node) return adaptTree(nd);
-            if (node.v < 0 && il('-')) { if (il('i')) return node; return B('*', B('*', C('i'), C('i')), N(-node.v)); }
+            if (node.v < 0 && il('-')) { var noT2 = negOneAst(); if (!noT2) return node; return B('*', noT2, N(-node.v)); }
             return nd;
         }
         if (node.t === 'fn') {
@@ -249,7 +277,7 @@ var AutoSolver = (function() {
             if (str.indexOf('e') !== -1) str = n.v.toFixed(20).replace(/0+$/, '').replace(/\.$/, '');
             return str;
         }
-        if (n.t === 'const') return n.name;
+        if (n.t === 'const') return n.name === 'pi' ? 'π' : n.name;
         if (n.t === 'fn') return n.name + '(' + toStr(n.arg) + ')';
         if (n.t === 'bin') {
             if (n.op === '-' && n.l.t === 'var' && n.r.t === 'num' && n.r.v < 0 && !il('+')) return 'x+' + toStr(N(-n.r.v));
@@ -274,7 +302,20 @@ var AutoSolver = (function() {
     // 域限制 e^(0^(ii·cos(π·e^f/(2e^H))))
     // 锁感知发射器：小数→整数倒数, /→^(ii), *→括号并列, 负→i*i
 
-    function gRecipExp() { return il('i') ? '0-1' : (il('*') ? '(i)(i)' : 'i*i'); }
+    // 负一字符串生成器（高斯路径用）：i*i → 0-1 → cos(π) → ln(1/e) → ln(e^cos(π))
+    function gNegOneStr() {
+        if (!il('i')) return il('*') ? '(i)(i)' : 'i*i';
+        if (!il('-')) return '0-1';
+        if (!il('cos') && !il('π')) return 'cos(π)';
+        if (!il('ln') && !il('e') && !il('1') && !il('/')) return 'ln(1/e)';
+        if (!il('ln') && !il('e') && !il('^') && !il('cos') && !il('π')) return 'ln(e^cos(π))';
+        return null;
+    }
+    function gRecipExp() {
+        var no = gNegOneStr();
+        if (no) return no;
+        return il('i') ? '0-1' : 'i*i';
+    }
     function gMul(arr) { return il('*') ? arr.map(function(t) { return '(' + t + ')'; }).join('') : arr.join('*'); }
     function gPow(base, exp) { return '(' + base + ')^(' + exp + ')'; }
     function gDiv(a, b) { return il('/') ? gMul([a, gPow(b, gRecipExp())]) : a + '/(' + b + ')'; }
@@ -289,6 +330,8 @@ var AutoSolver = (function() {
 
     function gConst(v) {
         if (v >= 0) return gNum(v);
+        var no = gNegOneStr();
+        if (no) return gMul([no, gNum(-v)]);
         return il('i') ? '0-' + gNum(-v) : gMul(['i', 'i', gNum(-v)]);
     }
 
@@ -338,6 +381,13 @@ var AutoSolver = (function() {
                 }
             }
             if (matched) continue;
+            // pi / π 统一为单 token 'π'
+            if (expr.slice(i, i + 2).toLowerCase() === 'pi') {
+                elems.push('π'); i += 2; continue;
+            }
+            if (expr[i] === 'π') {
+                elems.push('π'); i += 1; continue;
+            }
             elems.push(expr[i]); i++;
         }
         return elems;

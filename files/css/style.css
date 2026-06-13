@@ -3672,3 +3672,7 @@ body.device-mobile {
         letter-spacing: 6px;
     }
 }
+
+.mode-btn-more { opacity: 0.85; }
+.mode-more-submenu { padding-left: 8px; border-left: 2px solid rgba(255,255,255,0.15); margin-left: 4px; }
+.mode-btn-sub { font-size: 0.9em; }

@@ -138,6 +138,8 @@ class UIController {
         this.modeCampaignBtn = document.getElementById('mode-campaign');
         this.modeRandomBtn = document.getElementById('mode-random');
         this.modeTestBtn = document.getElementById('mode-test');
+        this.modeMoreBtn = document.getElementById('mode-more');
+        this.modeMoreSubmenu = document.getElementById('mode-more-submenu');
         this.modeHint = document.getElementById('mode-hint');
         this.selectedMode = 'local'; // 默认本地对战
 
@@ -201,6 +203,15 @@ class UIController {
         this.modeEditorBtn = document.getElementById('mode-editor');
         if (this.modeEditorBtn) {
             this.modeEditorBtn.addEventListener('click', () => this.selectMode('editor'));
+        }
+
+        // 绑定"更多模式"展开按钮
+        if (this.modeMoreBtn) {
+            this.modeMoreBtn.addEventListener('click', () => {
+                const open = this.modeMoreSubmenu?.style.display !== 'none';
+                if (this.modeMoreSubmenu) this.modeMoreSubmenu.style.display = open ? 'none' : 'block';
+                this.modeMoreBtn.textContent = open ? '更多模式 ▸' : '更多模式 ▾';
+            });
         }
 
         // 绑定联机对战模式按钮
@@ -498,6 +509,8 @@ class UIController {
         if (this.modeEditorBtn) this.modeEditorBtn.classList.toggle('active', this.selectedMode === 'editor');
         if (this.modeRandomBtn) this.modeRandomBtn.classList.toggle('active', this.selectedMode === 'random');
         if (this.modeP2PBtn) this.modeP2PBtn.classList.toggle('active', this.selectedMode === 'p2p');
+        const isMoreMode = ['p2p', 'random', 'editor'].includes(this.selectedMode);
+        if (this.modeMoreBtn) this.modeMoreBtn.classList.toggle('active', isMoreMode);
 
         if (this.modeAiBtn) {
             this.modeAiBtn.disabled = false;
@@ -609,6 +622,11 @@ class UIController {
 
         // 切离 P2P 模式时立即销毁房间，释放信令服务器占位
         if (mode !== 'p2p') this._cleanupP2P();
+
+        // 子模式：展开"更多模式"菜单，收起时折叠
+        const isMore = ['p2p', 'random', 'editor'].includes(mode);
+        if (this.modeMoreSubmenu) this.modeMoreSubmenu.style.display = isMore ? 'block' : 'none';
+        if (this.modeMoreBtn) this.modeMoreBtn.textContent = isMore ? '更多模式 ▾' : '更多模式 ▸';
         
         // 更新按钮状态
         const isCampaign = mode === 'campaign';

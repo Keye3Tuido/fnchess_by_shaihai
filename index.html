@@ -155,11 +155,14 @@
                         <div class="mode-toggle mode-toggle-vertical">
                             <button class="mode-btn active" id="mode-local" data-mode="local">本地对战</button>
                             <button class="mode-btn" id="mode-ai" data-mode="ai">人机对战</button>
-                            <button class="mode-btn" id="mode-p2p" data-mode="p2p">联机对战</button>
                             <button class="mode-btn" id="mode-campaign" data-mode="campaign">闯关模式</button>
                             <button class="mode-btn" id="mode-test" data-mode="test">测试模式</button>
-                            <button class="mode-btn" id="mode-random" data-mode="random">随机关卡</button>
-                            <button class="mode-btn" id="mode-editor" data-mode="editor">关卡编辑器</button>
+                            <button class="mode-btn mode-btn-more" id="mode-more">更多模式 ▸</button>
+                            <div class="mode-more-submenu" id="mode-more-submenu" style="display:none;">
+                                <button class="mode-btn mode-btn-sub" id="mode-p2p" data-mode="p2p">联机对战</button>
+                                <button class="mode-btn mode-btn-sub" id="mode-random" data-mode="random">随机关卡</button>
+                                <button class="mode-btn mode-btn-sub" id="mode-editor" data-mode="editor">关卡编辑器</button>
+                            </div>
                         </div>
                         <small id="mode-hint" style="display: block; margin-top: 5px; opacity: 0.7;">本地对战：两位玩家轮流操作</small>
                     </div>

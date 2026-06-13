@@ -1851,6 +1851,12 @@ body::before {
     background: rgba(68, 102, 112, 0.24);
     box-shadow: 0 0 10px rgba(34, 211, 238, 0.2);
 }
+.mode-toggle .mode-btn[data-mode="p2p"] {
+    border-color: rgba(16, 185, 129, 0.42);
+    color: #a7f3d0;
+    background: rgba(52, 112, 88, 0.24);
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+}
 .mode-toggle .mode-btn[data-mode="test"] {
     border-color: rgba(245, 158, 11, 0.42);
     color: #fde68a;

@@ -39,6 +39,13 @@ class UIController {
         // 游戏活跃标记（退出后设为 false，阻止 AI/计时器继续运行）
         this._gameActive = false;
 
+        // P2P 状态
+        this.p2pController = null;
+        this._p2pFirstPlayer = 'B';
+        this._p2pMeWantRematch = false;
+        this._p2pThemWantRematch = false;
+        this._remoteExpression = '';
+
         // 当前表达式
         this.currentExpression = '';
         this.expressionElements = [];
@@ -131,6 +138,8 @@ class UIController {
         this.modeCampaignBtn = document.getElementById('mode-campaign');
         this.modeRandomBtn = document.getElementById('mode-random');
         this.modeTestBtn = document.getElementById('mode-test');
+        this.modeMoreBtn = document.getElementById('mode-more');
+        this.modeMoreSubmenu = document.getElementById('mode-more-submenu');
         this.modeHint = document.getElementById('mode-hint');
         this.selectedMode = 'local'; // 默认本地对战
 
@@ -194,6 +203,21 @@ class UIController {
         this.modeEditorBtn = document.getElementById('mode-editor');
         if (this.modeEditorBtn) {
             this.modeEditorBtn.addEventListener('click', () => this.selectMode('editor'));
+        }
+
+        // 绑定"更多模式"展开按钮
+        if (this.modeMoreBtn) {
+            this.modeMoreBtn.addEventListener('click', () => {
+                const open = this.modeMoreSubmenu?.style.display !== 'none';
+                if (this.modeMoreSubmenu) this.modeMoreSubmenu.style.display = open ? 'none' : 'block';
+                this.modeMoreBtn.textContent = open ? '更多模式 ▸' : '更多模式 ▾';
+            });
+        }
+
+        // 绑定联机对战模式按钮
+        this.modeP2PBtn = document.getElementById('mode-p2p');
+        if (this.modeP2PBtn) {
+            this.modeP2PBtn.addEventListener('click', () => this.selectMode('p2p'));
         }
 
         // 绑定随机关卡模式按钮
@@ -483,6 +507,10 @@ class UIController {
         this.modeCampaignBtn.classList.toggle('active', this.selectedMode === 'campaign');
         this.modeTestBtn.classList.toggle('active', this.selectedMode === 'test');
         if (this.modeEditorBtn) this.modeEditorBtn.classList.toggle('active', this.selectedMode === 'editor');
+        if (this.modeRandomBtn) this.modeRandomBtn.classList.toggle('active', this.selectedMode === 'random');
+        if (this.modeP2PBtn) this.modeP2PBtn.classList.toggle('active', this.selectedMode === 'p2p');
+        const isMoreMode = ['p2p', 'random', 'editor'].includes(this.selectedMode);
+        if (this.modeMoreBtn) this.modeMoreBtn.classList.toggle('active', isMoreMode);
 
         if (this.modeAiBtn) {
             this.modeAiBtn.disabled = false;
@@ -591,6 +619,14 @@ class UIController {
         }
         
         this.selectedMode = mode;
+
+        // 切离 P2P 模式时立即销毁房间，释放信令服务器占位
+        if (mode !== 'p2p') this._cleanupP2P();
+
+        // 子模式：展开"更多模式"菜单，收起时折叠
+        const isMore = ['p2p', 'random', 'editor'].includes(mode);
+        if (this.modeMoreSubmenu) this.modeMoreSubmenu.style.display = isMore ? 'block' : 'none';
+        if (this.modeMoreBtn) this.modeMoreBtn.textContent = isMore ? '更多模式 ▾' : '更多模式 ▸';
         
         // 更新按钮状态
         const isCampaign = mode === 'campaign';
@@ -620,6 +656,7 @@ class UIController {
             this.modeTestBtn.classList.remove('active');
             if (this.modeEditorBtn) this.modeEditorBtn.classList.remove('active');
             if (this.modeRandomBtn) this.modeRandomBtn.classList.remove('active');
+            if (this.modeP2PBtn) this.modeP2PBtn.classList.remove('active');
             this.modeHint.textContent = '本地对战：两位玩家轮流操作';
             if (this.campaignPanel) this.campaignPanel.style.display = 'none';
             this.restoreBattleUI();
@@ -630,6 +667,7 @@ class UIController {
             this.modeTestBtn.classList.remove('active');
             if (this.modeEditorBtn) this.modeEditorBtn.classList.remove('active');
             if (this.modeRandomBtn) this.modeRandomBtn.classList.remove('active');
+            if (this.modeP2PBtn) this.modeP2PBtn.classList.remove('active');
             this.modeHint.textContent = '人机对战：你将对抗AI Summa';
             if (this.campaignPanel) this.campaignPanel.style.display = 'none';
             this.restoreBattleUI();
@@ -640,6 +678,7 @@ class UIController {
             this.modeTestBtn.classList.remove('active');
             if (this.modeEditorBtn) this.modeEditorBtn.classList.remove('active');
             if (this.modeRandomBtn) this.modeRandomBtn.classList.remove('active');
+            if (this.modeP2PBtn) this.modeP2PBtn.classList.remove('active');
             this.modeHint.textContent = '闯关模式：通关解锁下一关';
             if (this.campaignPanel) this.campaignPanel.style.display = 'none';
             this.setStartSelectorsEnabled(false);
@@ -651,6 +690,7 @@ class UIController {
             this.modeCampaignBtn.classList.remove('active');
             if (this.modeEditorBtn) this.modeEditorBtn.classList.remove('active');
             if (this.modeRandomBtn) this.modeRandomBtn.classList.remove('active');
+            if (this.modeP2PBtn) this.modeP2PBtn.classList.remove('active');
             this.modeHint.textContent = '测试模式：自由绘图，已绘制函数会保留在画布上';
             if (this.campaignPanel) this.campaignPanel.style.display = 'none';
             this.setStartSelectorsEnabled(false);
@@ -662,6 +702,7 @@ class UIController {
             this.modeCampaignBtn.classList.remove('active');
             this.modeTestBtn.classList.remove('active');
             if (this.modeRandomBtn) this.modeRandomBtn.classList.remove('active');
+            if (this.modeP2PBtn) this.modeP2PBtn.classList.remove('active');
             this.modeHint.textContent = '关卡编辑器：创建并导出自定义关卡';
             if (this.campaignPanel) this.campaignPanel.style.display = 'none';
             this.setStartSelectorsEnabled(false);
@@ -673,9 +714,21 @@ class UIController {
             this.modeCampaignBtn.classList.remove('active');
             this.modeTestBtn.classList.remove('active');
             if (this.modeEditorBtn) this.modeEditorBtn.classList.remove('active');
+            if (this.modeP2PBtn) this.modeP2PBtn.classList.remove('active');
             this.modeHint.textContent = '随机关卡：挑战随机生成或导入种子的关卡';
             if (this.campaignPanel) this.campaignPanel.style.display = 'none';
             this.setStartSelectorsEnabled(false);
+            this.restoreBattleUI();
+        } else if (mode === 'p2p') {
+            if (this.modeP2PBtn) this.modeP2PBtn.classList.add('active');
+            this.modeLocalBtn.classList.remove('active');
+            this.modeAiBtn.classList.remove('active');
+            this.modeCampaignBtn.classList.remove('active');
+            this.modeTestBtn.classList.remove('active');
+            if (this.modeEditorBtn) this.modeEditorBtn.classList.remove('active');
+            if (this.modeRandomBtn) this.modeRandomBtn.classList.remove('active');
+            this.modeHint.textContent = '联机对战：输入相同房间码匹配对手';
+            if (this.campaignPanel) this.campaignPanel.style.display = 'none';
             this.restoreBattleUI();
         }
     }
@@ -722,6 +775,8 @@ class UIController {
         this.gameController.on('phaseChange', (data) => {
             if (window.audioManager) window.audioManager.playPhaseChange();
             this.updatePhaseUI(data.phase);
+            // P2P模式：更新回合显示
+            this._updateP2PTurnDisplay();
             
             // Summa Reaction Hook for Phase Change
             if (this.gameController.gameMode === 'ai' && window.summaCharacter) {
@@ -770,11 +825,20 @@ class UIController {
                 window.audioManager.playTick();
             }
             this.updateTimer(data.remainingTime);
+            // P2P Host：同步计时到 Guest
+            if (this.gameController.isP2PMode() && this.p2pController && this.p2pController.isHost) {
+                this.p2pController.sendTimerSync(data.remainingTime);
+            }
         });
         
         this.gameController.on('timeout', (data) => {
             if (window.audioManager) window.audioManager.playError();
             this.showMessage(`玩家${data.player}超时！扣1分`, 'error');
+            // P2P Host：通知 Guest 超时
+            if (this.gameController.isP2PMode() && this.p2pController && this.p2pController.isHost) {
+                this.p2pController.sendTimeout(data.player);
+                this._p2pSyncScores();
+            }
         });
         
         this.gameController.on('targetSelected', (data) => {
@@ -1026,6 +1090,12 @@ class UIController {
                 }
                 
                 this.gridSystem.draw();
+                // P2P模式：更新回合显示
+                this._updateP2PTurnDisplay();
+                // P2P Host：每回合结束发送状态快照供 Guest 校验
+                if (this.gameController.isP2PMode() && this.p2pController?.isHost) {
+                    this._p2pSyncScores();
+                }
             } catch (error) {
                 console.error('[UI] roundComplete 错误:', error);
             }
@@ -1033,6 +1103,9 @@ class UIController {
         
         this.gameController.on('gameEnd', (data) => {
             if (window.audioManager) window.audioManager.playGameWin();
+            if (this.gameController.isP2PMode() && this.p2pController?.isHost) {
+                this._p2pSyncScores();
+            }
             const finishGameOver = () => this.showGameOver(data);
 
             // Summa Reaction Hook
@@ -1212,6 +1285,7 @@ class UIController {
         this.clearBtn.addEventListener('click', () => this.handleClear());
         this.exitBtn.addEventListener('click', () => this.handleExitClick());
         this.restartBtn.addEventListener('click', () => this.handleRestart());
+        document.getElementById('p2p-rematch-btn')?.addEventListener('click', () => this._requestP2PRematch());
         this.startBtn.addEventListener('click', () => this.handleStart());
         this.bindStartKeyboardSupport();
         if (this.viewReportBtn) {
@@ -1388,6 +1462,7 @@ class UIController {
                 this.expressionElements.splice(this.cursorIndex - 1, 1);
                 this.cursorIndex--;
                 this.updateExpressionDisplay();
+                this._forwardP2PAction('expression_change', { expression: this.currentExpression });
             }
         } else if (key === 'Delete') {
             e.preventDefault();
@@ -1396,6 +1471,7 @@ class UIController {
                 if (window.audioManager) window.audioManager.playElementClick();
                 this.expressionElements.splice(this.cursorIndex, 1);
                 this.updateExpressionDisplay();
+                this._forwardP2PAction('expression_change', { expression: this.currentExpression });
             }
         } else if (key === 'ArrowLeft') {
             e.preventDefault();
@@ -1580,15 +1656,14 @@ class UIController {
             
             // 如果已经达到最大锁定次数，半透明化并禁用
             if (isMaxLocked) {
-                btn.style.opacity = '0.4';
+                btn.classList.add('locked');
                 btn.disabled = true;
-                btn.style.cursor = 'not-allowed';
                 btn.title = `${this.getDisplaySymbol(element)} 已达到最大锁定次数 (2/2)`;
             }
             
-            // 添加鼠标悬停事件显示气泡框
+            // 仅在元素已被锁定过至少一次时显示次数气泡框（避免显示无意义的0/2）
             btn.addEventListener('mouseenter', (e) => {
-                this.showLockCountTooltip(e, element, lockCount);
+                if (lockCount > 0) this.showLockCountTooltip(e, element, lockCount);
             });
             btn.addEventListener('mouseleave', () => {
                 this.hideLockCountTooltip();
@@ -1621,14 +1696,18 @@ class UIController {
         const state = this.gameController.getGameState();
         const alreadyLocked = state.roundState.lockedElements;
         
+        // P2P模式：非己方回合禁止操作
+        if (this._isP2PBlocked()) {
+            this.showMessage('请等待对手操作', 'info');
+            return;
+        }
+        
         if (alreadyLocked.includes(element)) {
-            // 取消锁定（从数组中移除）
-            const index = alreadyLocked.indexOf(element);
-            if (index > -1) {
-                alreadyLocked.splice(index, 1);
-            }
+            const rollback = () => { this.gameController.addLockedElement(element); };
+            this.gameController.removeLockedElement(element);
             btn.classList.remove('selected');
             btn.style.background = '';
+            this._forwardP2PAction('unlock_element', { element }, rollback);
         } else {
             // x 和括号不能被锁定
             if (element === 'x') {
@@ -1644,6 +1723,7 @@ class UIController {
             if (this.gameController.addLockedElement(element)) {
                 btn.classList.add('selected');
                 btn.style.background = 'rgba(239, 68, 68, 0.5)';
+                this._forwardP2PAction('lock_element', { element });
             }
         }
         
@@ -1946,37 +2026,43 @@ class UIController {
     handleCanvasClick(e) {
         const canvas = this.gridSystem.canvas;
         const rect = canvas.getBoundingClientRect();
-        
-        // 考虑CSS缩放
         const scaleX = canvas.width / rect.width;
         const scaleY = canvas.height / rect.height;
-        
         const x = (e.clientX - rect.left) * scaleX;
         const y = (e.clientY - rect.top) * scaleY;
-        
         const cell = this.gridSystem.getCellFromCanvas(x, y);
         if (!cell) return;
-        
+
         const phase = this.gameController.currentPhase;
         const state = this.gameController.getGameState();
-        
+
         // 人机模式下，如果当前是AI的回合，阻止玩家操作
         if (this.gameController.gameMode === 'ai' && state.currentPlayer === 'B') {
             console.log('[UI] AI回合中，阻止玩家点击');
             return;
         }
-        
+
+        // P2P模式：非己方回合禁止操作
+        if (this._isP2PBlocked()) {
+            this.showMessage('请等待对手操作', 'info');
+            return;
+        }
+
         // 检查是否是历史使用过的格子
         const isUsedCell = state.usedCells && state.usedCells.some(c => c.x === cell.x && c.y === cell.y);
         if (isUsedCell) {
             this.showMessage('此格子已在之前的回合中使用过，无法再次选择', 'warning');
             return;
         }
-        
+
         if (phase === 'select_target') {
-            this.gameController.selectTargetCell(cell);
+            if (!this.gameController.selectTargetCell(cell)) return;
+            this._forwardP2PAction('select_target', { cell: { x: cell.x, y: cell.y } },
+                () => this.gameController.selectTargetCell(cell));
         } else if (phase === 'set_forbidden') {
-            this.gameController.addForbiddenCell(cell);
+            if (!this.gameController.addForbiddenCell(cell)) return;
+            this._forwardP2PAction('add_forbidden', { cell: { x: cell.x, y: cell.y } },
+                () => this.gameController.addForbiddenCell(cell));
         }
     }
     
@@ -2003,6 +2089,14 @@ class UIController {
             this.gridSystem.canvas.title = 'Summa 正在操作中...';
             return;
         }
+
+        // P2P模式：非己方回合显示等待光标（不用 _isP2PBlocked 避免 showMessage 副作用）
+        if (this.gameController.isP2PMode() && this.p2pController && this.p2pController.isConnected &&
+            !this.p2pController.isMyTurn(this.gameController.currentPlayer)) {
+            this.gridSystem.canvas.style.cursor = 'not-allowed';
+            this.gridSystem.canvas.title = '等待对手操作...';
+            return;
+        }
         
         if (cell) {
             this.gridSystem.canvas.style.cursor = 'pointer';
@@ -2023,11 +2117,18 @@ class UIController {
             this.showMessage('当前阶段不能输入函数', 'error');
             return;
         }
-        
+
         // 人机模式下，如果当前是AI的回合，禁止玩家操作
         const state = this.gameController.getGameState();
         if (this.gameController.gameMode === 'ai' && state.currentPlayer === 'B') {
             this.showMessage('Summa 正在思考中...', 'info');
+            return;
+        }
+
+        // P2P模式：非己方回合禁止操作
+        if (this.gameController.isP2PMode() && this.p2pController &&
+            !this.p2pController.isMyTurn(this.gameController.currentPlayer)) {
+            this.showMessage('请等待对手操作', 'info');
             return;
         }
         
@@ -2053,11 +2154,8 @@ class UIController {
         
         if (window.audioManager) window.audioManager.playClick();
         this.updateExpressionDisplay();
+        this._forwardP2PAction('expression_change', { expression: this.currentExpression });
     }
-    
-    /**
-     * 将运算符转换为显示符号
-     */
     getDisplaySymbol(element) {
         const symbolMap = {
             '*': '×',
@@ -2071,6 +2169,13 @@ class UIController {
      * 更新表达式显示
      */
     updateExpressionDisplay() {
+        // P2P：对方输入阶段显示对方表达式预览
+        if (this.gameController.isP2PMode() && this.p2pController?.isConnected &&
+            this.gameController.currentPhase === 'input_function' &&
+            !this.p2pController.isMyTurn(this.gameController.currentPlayer)) {
+            this.expressionDisplay.innerHTML = '<span class="expression-prefix">y =</span><span style="opacity:0.5;font-style:italic">' + (this._remoteExpression || '') + '</span>';
+            return;
+        }
         this.currentExpression = this.expressionElements.join('');
         this.expressionDisplay.innerHTML = '';
         
@@ -2361,6 +2466,11 @@ class UIController {
         this.expressionElements = [];
         this.currentExpression = '';
         this.updateExpressionDisplay();
+        // 仅在己方回合清除时同步（phaseChange等自动清除不转发）
+        if (this.gameController.isP2PMode() && this.p2pController?.isConnected &&
+            this.p2pController.isMyTurn(this.gameController.currentPlayer)) {
+            this._forwardP2PAction('expression_change', { expression: '' });
+        }
     }
     
     /**
@@ -2376,13 +2486,22 @@ class UIController {
             this.showMessage('Summa 正在思考中...', 'info');
             return;
         }
+
+        // P2P模式：非己方回合禁止操作
+        if (this._isP2PBlocked()) {
+            this.showMessage('请等待对手操作', 'info');
+            return;
+        }
             
         if (phase === 'select_target') {
-            this.gameController.confirmTargetSelection();
+            if (this.gameController.confirmTargetSelection())
+                this._forwardP2PAction('confirm_target', {});
         } else if (phase === 'set_forbidden') {
-            this.gameController.confirmForbiddenSelection();
+            if (this.gameController.confirmForbiddenSelection())
+                this._forwardP2PAction('confirm_forbidden', {});
         } else if (phase === 'set_locks') {
-            this.gameController.confirmLockSelection();
+            if (this.gameController.confirmLockSelection())
+                this._forwardP2PAction('confirm_locks', {});
         } else if (phase === 'input_function') {
             this.submitFunction();
         }
@@ -2421,9 +2540,14 @@ class UIController {
         
         // 提交函数
         this.gameController.submitFunction(expression);
-        
+
+        // P2P模式：转发表达式到远程
+        this._forwardP2PAction('submit_function', { expression });
+
         // 绘制函数并检测碰撞
-        this.renderAndEvaluate(expression);
+        this.renderAndEvaluate(expression).then(() => {
+            if (this.gameController.isP2PMode() && this.p2pController?.isHost) this._p2pSyncScores();
+        }).catch(e => console.error('[UI] renderAndEvaluate失败:', e));
     }
     
     /**
@@ -2969,6 +3093,8 @@ class UIController {
         if (this.gameController.isTestMode()) {
             this.exitTestMode();
         } else {
+            // P2P模式：断开连接
+            this._cleanupP2P();
             // 普通对战模式：返回开始界面
             this.gameController.resetGame();
             this.resetBattleGrid();
@@ -3075,6 +3201,12 @@ class UIController {
                 window.audioManager.audioCtx.resume();
             }
             window.audioManager.playClick();
+        }
+        
+        // 联机对战模式：显示房间对话框
+        if (this.selectedMode === 'p2p') {
+            this.showP2PRoomDialog();
+            return;
         }
         
         // 闯关模式：进入关卡选择界面（难度选择）
@@ -4153,8 +4285,26 @@ class UIController {
      */
     handleRestart() {
         if (window.audioManager) window.audioManager.playClick();
+        // 结算弹窗中点击"返回主页"：始终回到主页（P2P / 普通模式均适用）
+        if (this.gameOverModal && this.gameOverModal.style.display !== 'none') {
+            this.forceStopGame();
+            this._cleanupP2P();
+            this.hideModal(this.gameOverModal, () => this.showModal(this.startModal));
+            return;
+        }
+        // P2P模式：游戏进行中重新开始（再来一局邀请）
+        if (this.gameController.isP2PMode() && this.p2pController?.isConnected) {
+            this.forceStopGame();
+            this._p2pMeWantRematch = true;
+            this.p2pController.sendRematchRequest();
+            this.showMessage('等待对手确认...', 'info');
+            this._checkAndStartRematch();
+            return;
+        }
         // ★ 先强制停止游戏运行
         this.forceStopGame();
+        // P2P模式：断开连接
+        this._cleanupP2P();
         this.hideModal(this.gameOverModal, () => {
             // 如果在测试模式，先退出测试模式
             if (this.gameController.isTestMode()) {
@@ -4347,19 +4497,20 @@ class UIController {
      * 显示游戏结束
      */
     showGameOver(data) {
-        let winnerText = '';
-        if (data.winner === 'draw') {
-            winnerText = '平局！';
+        if (this.gameController.isP2PMode() && this.p2pController?.isConnected) {
+            this._p2pMeWantRematch = false;
+            this._p2pThemWantRematch = false;
+            if (this.restartBtn) this.restartBtn.textContent = '返回主页';
+            const rematchBtn = document.getElementById('p2p-rematch-btn');
+            if (rematchBtn) { rematchBtn.textContent = '再来一局'; rematchBtn.style.display = ''; rematchBtn.disabled = false; }
         } else {
-            winnerText = `玩家 ${data.winner} 获胜！`;
+            this._cleanupP2P();
+            if (this.restartBtn) this.restartBtn.textContent = '再来一局';
+            const rematchBtn = document.getElementById('p2p-rematch-btn');
+            if (rematchBtn) rematchBtn.style.display = 'none';
         }
-        
-        this.winnerElement.textContent = winnerText;
-        this.finalScoresElement.innerHTML = `
-            <div>玩家A: ${data.scores.A} 分</div>
-            <div>玩家B: ${data.scores.B} 分</div>
-        `;
-        
+        this.winnerElement.textContent = data.winner === 'draw' ? '平局！' : `玩家 ${data.winner} 获胜！`;
+        this.finalScoresElement.innerHTML = `<div>玩家A: ${data.scores.A} 分</div><div>玩家B: ${data.scores.B} 分</div>`;
         this.showModal(this.gameOverModal);
     }
     
@@ -4503,6 +4654,384 @@ class UIController {
 
         // 激活编辑器
         this.levelEditor.activate();
+    }
+
+    // ═══════════════════════════════════════════════
+    // P2P 联机对战
+    // ═══════════════════════════════════════════════
+
+    showP2PRoomDialog() {
+        if (typeof Peer === 'undefined') {
+            this.showMessage('联机模块加载失败，请检查网络连接后刷新页面重试', 'error');
+            return;
+        }
+        if (typeof P2PController === 'undefined') {
+            this.showMessage('P2P模块未加载', 'error');
+            return;
+        }
+        this._cleanupP2P();
+        this.p2pController = new P2PController();
+        this._setupP2PCallbacks();
+
+        if (!document.getElementById('p2p-room-modal')) {
+            this._createP2PRoomModal();
+        }
+
+        // 重置 UI 状态
+        const $ = id => document.getElementById(id);
+        const cb = $('p2p-create-btn'); if (cb) cb.disabled = false;
+        const jb = $('p2p-join-btn'); if (jb) jb.disabled = false;
+        const display = $('p2p-room-code-display');
+        if (display) display.style.display = 'none';
+        const input = $('p2p-room-input');
+        if (input) input.value = '';
+        this._updateP2PStatus('idle', '准备就绪');
+
+        this.showModal(document.getElementById('p2p-room-modal'));
+    }
+
+    _createP2PRoomModal() {
+        const modal = document.createElement('div');
+        modal.id = 'p2p-room-modal';
+        modal.className = 'modal';
+        modal.style.display = 'none';
+        modal.innerHTML = '<div class="modal-content p2p-room-content"><h2>联机对战</h2><div class="p2p-status" id="p2p-status"><span class="p2p-status-dot"></span><span class="p2p-status-text">准备就绪</span></div><div class="p2p-tabs"><button class="p2p-tab active" id="p2p-tab-create">创建房间</button><button class="p2p-tab" id="p2p-tab-join">加入房间</button></div><div class="p2p-tab-content" id="p2p-tab-create-content"><p class="p2p-desc">创建房间后将获得一个6位房间码，分享给对手即可开始对战</p><div class="p2p-room-code-display" id="p2p-room-code-display" style="display:none;"><span class="p2p-label">房间码</span><span class="p2p-room-code" id="p2p-room-code-text">------</span><button class="btn btn-small p2p-copy-btn" id="p2p-copy-btn">复制</button></div><button class="btn btn-primary p2p-action-btn" id="p2p-create-btn">创建房间</button></div><div class="p2p-tab-content" id="p2p-tab-join-content" style="display:none;"><p class="p2p-desc">输入对手分享的6位房间码加入对战</p><div class="p2p-input-group"><input type="text" id="p2p-room-input" class="p2p-room-input" maxlength="6" placeholder="输入6位房间码" autocomplete="off"></div><button class="btn btn-primary p2p-action-btn" id="p2p-join-btn">加入房间</button></div><div class="p2p-battle-hint"><small>房主为<strong>玩家A</strong>，访客为<strong>玩家B</strong></small><br><small>双方轮流操作，玩法与本地对战一致</small></div><button class="btn btn-secondary p2p-back-btn" id="p2p-back-btn" style="width:100%;margin-top:8px;">返回</button></div>';
+        const startModal = document.getElementById('start-modal');
+        startModal.parentNode.insertBefore(modal, startModal.nextSibling);
+        this._bindP2PRoomEvents();
+    }
+
+    _bindP2PRoomEvents() {
+        const modal = document.getElementById('p2p-room-modal');
+        if (!modal) return;
+
+        const $ = (id) => document.getElementById(id);
+
+        const tabCreate = $('p2p-tab-create');
+        const tabJoin = $('p2p-tab-join');
+        const contentCreate = $('p2p-tab-create-content');
+        const contentJoin = $('p2p-tab-join-content');
+        if (tabCreate && tabJoin && contentCreate && contentJoin) {
+            tabCreate.addEventListener('click', () => {
+                tabCreate.classList.add('active');
+                tabJoin.classList.remove('active');
+                contentCreate.style.display = 'block';
+                contentJoin.style.display = 'none';
+                const ri = $('p2p-room-input'); if (ri) ri.value = '';
+                const jb = $('p2p-join-btn'); if (jb) jb.disabled = false;
+            });
+            tabJoin.addEventListener('click', () => {
+                tabJoin.classList.add('active');
+                tabCreate.classList.remove('active');
+                contentJoin.style.display = 'block';
+                contentCreate.style.display = 'none';
+            });
+        }
+
+        const createBtn = $('p2p-create-btn');
+        if (createBtn) createBtn.addEventListener('click', () => this._createP2PRoom());
+
+        const joinBtn = $('p2p-join-btn');
+        if (joinBtn) joinBtn.addEventListener('click', () => this._joinP2PRoom());
+
+        const roomInput = $('p2p-room-input');
+        if (roomInput) {
+            roomInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') this._joinP2PRoom(); });
+            roomInput.addEventListener('input', (e) => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); });
+        }
+
+        const copyBtn = $('p2p-copy-btn');
+        if (copyBtn) {
+            copyBtn.addEventListener('click', () => {
+                const codeText = $('p2p-room-code-text');
+                const code = codeText ? codeText.textContent : '';
+                if (!code) return;
+                // clipboard API + fallback
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(code).then(() => {
+                        this.showMessage('房间码已复制！', 'success');
+                    }).catch(() => { this.showMessage('复制失败，请手动复制', 'warning'); });
+                } else {
+                    // fallback: execCommand
+                    const ta = document.createElement('textarea');
+                    ta.value = code;
+                    ta.style.position = 'fixed'; ta.style.left = '-9999px';
+                    document.body.appendChild(ta);
+                    ta.select();
+                    try { document.execCommand('copy'); this.showMessage('房间码已复制！', 'success'); }
+                    catch (e) { this.showMessage('复制失败，请手动复制: ' + code, 'warning'); }
+                    document.body.removeChild(ta);
+                }
+            });
+        }
+
+        const backBtn = $('p2p-back-btn');
+        if (backBtn) {
+            backBtn.addEventListener('click', () => {
+                this._cleanupP2P();
+                this.hideModal(modal);
+                this.showModal(this.startModal);
+                this._updateP2PStatus('idle', '准备就绪');
+            });
+        }
+    }
+
+    _createP2PRoom() {
+        if (!this.p2pController) return;
+        document.getElementById('p2p-create-btn').disabled = true;
+        this.p2pController.createRoom();
+        document.getElementById('p2p-room-code-display').style.display = 'flex';
+        document.getElementById('p2p-room-code-text').textContent = this.p2pController.roomCode;
+        if (window.audioManager) window.audioManager.playClick();
+    }
+
+    _joinP2PRoom() {
+        if (!this.p2pController) return;
+        const roomCode = document.getElementById('p2p-room-input').value.trim().toUpperCase();
+        if (!roomCode || roomCode.length !== 6) { this.showMessage('请输入6位房间码', 'warning'); return; }
+        document.getElementById('p2p-join-btn').disabled = true;
+        this.p2pController.joinRoom(roomCode);
+        if (window.audioManager) window.audioManager.playClick();
+    }
+
+    _setupP2PCallbacks() {
+        if (!this.p2pController) return;
+        const p2p = this.p2pController;
+
+        p2p.onStatusChange  = (status, msg) => this._updateP2PStatus(status, msg);
+        p2p.onConnected     = () => this._startP2PGame();
+        p2p.onDisconnected  = () => {
+            if (this.gameController.isP2PMode()) {
+                this.forceStopGame();
+                const sA = this.gameController.players?.A?.score ?? 0;
+                const sB = this.gameController.players?.B?.score ?? 0;
+                this.winnerElement.textContent = '对手已断开连接';
+                this.finalScoresElement.innerHTML = `<div>玩家A: ${sA} 分</div><div>玩家B: ${sB} 分</div>`;
+                this._cleanupP2P();
+                this.showModal(this.gameOverModal);
+            }
+        };
+        p2p.onError         = (err) => {
+            this.showMessage('连接失败：' + (err.message || '未知错误'), 'error');
+            const cb = document.getElementById('p2p-create-btn'); if (cb) cb.disabled = false;
+            const jb = document.getElementById('p2p-join-btn');   if (jb) jb.disabled = false;
+        };
+        // 接收方预执行游戏动作，返回 bool 供 P2PController 自动 ack/nack
+        p2p.onGameAction    = (action, payload) => this._applyRemoteAction(action, payload);
+        // 己方动作被对方 nack，执行回滚
+        p2p.onNack          = (action, rollback, reason) => this._handleNack(action, rollback, reason);
+        // Host 发来游戏初始化（Guest 收到）
+        p2p.onGameInit      = (config) => this._receiveGameInit(config);
+        // Host 发来完整状态（Guest 收到）
+        p2p.onStateSync     = (state) => this._applyStateSync(state);
+        // Host 每秒发来计时
+        p2p.onTimerSync     = (remainingTime) => this.gameController.syncRemoteTimer(remainingTime);
+        // Host 通知超时
+        p2p.onTimeout       = () => this.gameController.applyRemoteTimeout();
+        // 对方请求再来一局
+        p2p.onRematch       = () => {
+            this._p2pThemWantRematch = true;
+            if (this._p2pMeWantRematch) {
+                this._checkAndStartRematch();
+            } else {
+                this.showMessage('对手想再来一局，点击"再来一局"确认', 'info');
+                const btn = document.getElementById('p2p-rematch-btn');
+                if (btn) btn.textContent = '再来一局 ✓';
+            }
+        };
+    }
+
+    _startP2PGame() {
+        const p2pModal = document.getElementById('p2p-room-modal');
+        if (p2pModal) this.hideModal(p2pModal);
+        this.hideModal(this.startModal);
+        if (this.p2pController.isHost) {
+            const rounds = parseInt(this.roundSelect?.value || this.roundOptions?.[this.currentRoundIndex || 0]?.value || 8, 10);
+            const difficulty = this.difficultySelect?.value || this.difficultyOptions?.[this.currentDifficultyIndex || 0]?.value || 'normal';
+            this._p2pFirstPlayer = 'B';
+            this._markGameActive();
+            this.gameController.p2pTimerSync = false;
+            this.gameController.initGame(rounds, difficulty, 'p2p', 'B');
+            this.p2pController.sendGameInit({ rounds, difficulty, firstPlayer: 'B' });
+            this._updateP2PTurnDisplay();
+        } else {
+            this._markGameActive();
+            this.gameController.p2pTimerSync = true;
+            this._updateP2PStatus('waiting', '等待房主开始游戏...');
+        }
+    }
+
+    /** Guest 收到 game_init 时调用 */
+    _receiveGameInit(config) {
+        if (this.gameOverModal?.style.display !== 'none') this.hideModal(this.gameOverModal);
+        this._markGameActive();
+        this.gameController.p2pTimerSync = true;
+        this._p2pMeWantRematch = false;
+        this._p2pThemWantRematch = false;
+        this.gameController.initGame(config.rounds, config.difficulty, 'p2p', config.firstPlayer || 'B');
+        this._updateP2PTurnDisplay();
+        this._updateP2PStatus('connected', '游戏开始！');
+    }
+
+    /**
+     * 接收方预执行远程动作 — 返回 true(ack) 或 false(nack)
+     * 由 P2PController.onGameAction 回调调用
+     */
+    _applyRemoteAction(action, payload) {
+        // 表达式预览：纯UI同步，不改变游戏状态
+        if (action === 'expression_change') {
+            this._remoteExpression = payload?.expression || '';
+            this.updateExpressionDisplay();
+            return true;
+        }
+        // 提交函数：触发完整评估流程
+        if (action === 'submit_function') {
+            const expr = payload?.expression;
+            if (!expr) return false;
+            const ok = this.gameController.submitFunction(expr);
+            if (!ok) return false;
+            this.renderAndEvaluate(expr).then(() => {
+                if (this.p2pController?.isHost) {
+                    this._p2pSyncScores();
+                } else if (this._lastStateSync) {
+                    // state_sync 可能在本地 eval 前到达并被覆盖，重新应用
+                    this._applyStateSync(this._lastStateSync);
+                }
+            }).catch(e => console.error('[P2P] renderAndEvaluate:', e));
+            this._updateP2PTurnDisplay();
+            return true;
+        }
+        // 通用游戏动作
+        const ok = this.gameController.applyRemoteAction(action, payload);
+        if (ok === false) return false;
+        this._updateP2PTurnDisplay();
+        if (action === 'lock_element' || action === 'unlock_element') {
+            if (this.gameController.currentPhase === 'set_locks') this.initLockElementsView();
+        } else if (action === 'confirm_target' || action === 'confirm_forbidden' || action === 'confirm_locks') {
+            this.gridSystem.draw?.();
+            this.updateExpressionDisplay();
+        }
+        return true;
+    }
+
+    /** nack 时回滚本地操作并提示用户 */
+    _handleNack(action, rollback, reason) {
+        console.warn('[P2P] nack:', action, reason);
+        if (typeof rollback === 'function') rollback();
+        this.showMessage('操作失败，请重试', 'warning');
+        // 刷新相关UI
+        if (action === 'lock_element' || action === 'unlock_element') this.initLockElementsView();
+    }
+
+    /** 发送带 ack 的游戏动作；rollback 在收到 nack 时调用 */
+    _forwardP2PAction(action, payload, rollback = null) {
+        if (!this.gameController.isP2PMode() || !this.p2pController?.isConnected) return;
+        this.p2pController.sendGameAction(action, payload, rollback);
+    }
+
+    _updateP2PStatus(status, message) {
+        const statusEl = document.getElementById('p2p-status');
+        if (!statusEl) return;
+        const dot = statusEl.querySelector('.p2p-status-dot');
+        const text = statusEl.querySelector('.p2p-status-text');
+        if (dot) { dot.className = 'p2p-status-dot ' + status; }
+        if (text) text.textContent = message;
+    }
+
+    _updateP2PTurnDisplay() {
+        if (!this.gameController.isP2PMode() || !this.p2pController) return;
+        const myId = this.p2pController.getMyPlayerId();
+        const isMyTurn = this.p2pController.isMyTurn(this.gameController.currentPlayer);
+        if (this.phaseHintElement) {
+            const phaseNames = { 'select_target': '选择目标网格', 'set_forbidden': '设置禁区', 'set_locks': '锁定元素', 'input_function': '构建函数表达式', 'evaluate': '评估中...', 'settle': '结算中...', 'switch_player': '切换回合...' };
+            const phaseText = phaseNames[this.gameController.currentPhase] || this.gameController.currentPhase;
+            this.phaseHintElement.textContent = (isMyTurn ? '【你的回合】' : '【对方回合】') + ' ' + phaseText;
+        }
+        if (this.currentPlayerElement) {
+            const playerName = this.gameController.currentPlayer === 'A' ? '玩家 A' : '玩家 B';
+            this.currentPlayerElement.textContent = playerName + ((this.gameController.currentPlayer === myId) ? '（你）' : '（对手）');
+        }
+    }
+
+    _isP2PBlocked() {
+        if (!this.gameController.isP2PMode() || !this.p2pController) return false;
+        if (!this.p2pController.isConnected) { this.showMessage('等待对手连接...', 'warning'); return true; }
+        return !this.p2pController.isMyTurn(this.gameController.currentPlayer);
+    }
+
+
+    _p2pSyncScores() {
+        if (!this.p2pController?.isConnected || !this.p2pController.isHost) return;
+        const gc = this.gameController;
+        this.p2pController.sendStateSync({
+            scores: { A: gc.players.A.score, B: gc.players.B.score },
+            round: gc.currentRound,
+            phase: gc.currentPhase,
+            roundState: {
+                targetCells:    gc.roundState.targetCells,
+                forbiddenCells: gc.roundState.forbiddenCells,
+                lockedElements: gc.roundState.lockedElements
+            }
+        });
+    }
+
+    /** 应用 Host 发来的完整状态（Guest 收到 state_sync 时调用） */
+    _applyStateSync(state) {
+        if (!state?.scores) return;
+        this._lastStateSync = state;
+        this.gameController.players.A.score = state.scores.A;
+        this.gameController.players.B.score = state.scores.B;
+        this.updateScoreboard();
+        if (this.gameOverModal?.style.display !== 'none') {
+            const { A, B } = state.scores;
+            this.winnerElement.textContent = A > B ? '玩家 A 获胜！' : B > A ? '玩家 B 获胜！' : '平局！';
+            this.finalScoresElement.innerHTML = `<div>玩家A: ${A} 分</div><div>玩家B: ${B} 分</div>`;
+        }
+    }
+
+    _cleanupP2P() {
+        if (this.p2pController) {
+            this.p2pController.disconnect();
+            this.p2pController = null;
+        }
+        this.gameController.gameMode = 'local';
+        this.gameController.p2pTimerSync = false;
+        this._remoteExpression = '';
+        this._lastStateSync = null;
+        this._p2pMeWantRematch = false;
+        this._p2pThemWantRematch = false;
+        this._p2pFirstPlayer = 'B';
+    }
+
+    /** 用户点击"再来一局"按钮时调用 */
+    _requestP2PRematch() {
+        if (!this.p2pController?.isConnected) return;
+        this._p2pMeWantRematch = true;
+        this.p2pController.sendRematchRequest();
+        const btn = document.getElementById('p2p-rematch-btn');
+        if (btn) { btn.disabled = true; btn.textContent = '等待对手...'; }
+        if (this._p2pThemWantRematch) this._checkAndStartRematch();
+    }
+
+    _checkAndStartRematch() {
+        if (!this._p2pMeWantRematch || !this._p2pThemWantRematch) return;
+        // 立即清标志，防止双端同时进入时 double-flip
+        this._p2pMeWantRematch = false;
+        this._p2pThemWantRematch = false;
+        this.p2pController.flipRoleForRematch();
+        if (!this.p2pController.isHost) return; // 新 Guest 等待 game_init
+        const rounds = this.gameController.totalRounds;
+        const difficulty = this.gameController.difficulty;
+        const nextFirst = this._p2pFirstPlayer === 'B' ? 'A' : 'B';
+        this._p2pFirstPlayer = nextFirst;
+        this._p2pMeWantRematch = false;
+        this._p2pThemWantRematch = false;
+        this._markGameActive();
+        this.gameController.p2pTimerSync = false;
+        this.hideModal(this.gameOverModal);
+        this.gameController.initGame(rounds, difficulty, 'p2p', nextFirst);
+        this.p2pController.sendGameInit({ rounds, difficulty, firstPlayer: nextFirst });
+        this._updateP2PTurnDisplay();
     }
 }
 

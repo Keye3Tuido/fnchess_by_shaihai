@@ -14,6 +14,15 @@
  * - 非游戏消息（timer_sync / state_sync / timeout）携带 gen 字段，跨局消息自动丢弃
  */
 class P2PController {
+    // ═══ 静态信令服务器配置（全局生效） ═══
+    static signaling = {
+        host: 'fnchess.peerserver.keye3tuido.site',
+        port: 443,
+        path: '/',
+        secure: true,
+        debug: 0
+    };
+
     constructor() {
         // 连接状态
         this.peer = null;
@@ -89,7 +98,15 @@ class P2PController {
         this._notifyStatus('connecting', '正在创建房间...');
         this._startTimeout('创建房间超时，请检查网络后重试');
         try {
-            this.peer = new Peer(this.roomCode, { debug: 0, config: { iceServers: this.iceServers } });
+            const sig = P2PController.signaling;
+            this.peer = new Peer(this.roomCode, {
+                debug: sig.debug,
+                host: sig.host,
+                port: sig.port,
+                path: sig.path,
+                secure: sig.secure,
+                config: { iceServers: this.iceServers }
+            });
             this.peer.on('open', () => {
                 this._clearTimeout();
                 this._notifyStatus('waiting', '等待对手加入...');
@@ -130,7 +147,15 @@ class P2PController {
         this._startTimeout('连接房间超时，请检查房间码和网络后重试');
         try {
             const guestId = 'g_' + Math.random().toString(36).substr(2, 9);
-            this.peer = new Peer(guestId, { debug: 0, config: { iceServers: this.iceServers } });
+            const sig = P2PController.signaling;
+            this.peer = new Peer(guestId, {
+                debug: sig.debug,
+                host: sig.host,
+                port: sig.port,
+                path: sig.path,
+                secure: sig.secure,
+                config: { iceServers: this.iceServers }
+            });
             this.peer.on('open', () => {
                 const conn = this.peer.connect(normalized, { reliable: true });
                 this._setupConnection(conn);
@@ -146,7 +171,10 @@ class P2PController {
     _setupConnection(conn) {
         this._clearTimeout();
         this.conn = conn;
+        // DataChannel 打开超时：15 秒内未 open 则视为失败
+        this._startTimeout('连接超时，请确认房间码正确且对方在线', 15000);
         conn.on('open', () => {
+            this._clearTimeout();
             this.isConnected = true;
             this.isConnecting = false;
             this._guestConnecting = false;
@@ -286,6 +314,10 @@ class P2PController {
         if (err?.type === 'unavailable-id') {
             message = '房间码已被占用，请重新创建房间';
             this.disconnect();
+            // disconnect 已销毁 peer/conn，直接通知后返回
+            this._notifyStatus('error', message);
+            if (this.onError) this.onError(err || new Error(message));
+            return;
         } else if (err?.type === 'peer-unavailable') {
             message = '无法连接到房间，请检查房间码是否正确';
         } else if (err?.type === 'network') {
@@ -315,6 +347,9 @@ class P2PController {
         if (wasConnected) {
             this._notifyStatus('disconnected', '对手已断开连接');
             if (this.onDisconnected) this.onDisconnected();
+        } else if (!this._disconnecting) {
+            // 尚未建立连接就断开（DataChannel error / 超时）→ 通知用户
+            this._handleError({ type: 'network', message: '连接失败，请确认房间码正确且对方在线' });
         }
     }
 

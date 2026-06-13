@@ -444,7 +444,7 @@ var AutoSolver = (function() {
         // 容器：两个按钮作为一个整体拖动
         var wrap = document.createElement('div');
         wrap.id = 'autosolver-panel';
-        wrap.style.cssText = 'position:fixed;bottom:20px;left:20px;z-index:9999;display:flex;flex-direction:column;gap:8px;user-select:none;touch-action:none';
+        wrap.style.cssText = 'position:fixed;top:50%;left:20px;transform:translateY(-50%);z-index:9999;display:flex;flex-direction:column;gap:8px;user-select:none;touch-action:none';
         document.body.appendChild(wrap);
 
         // 求解按钮
@@ -479,6 +479,7 @@ var AutoSolver = (function() {
                 wrap.style.left = (origLeft + dx) + 'px';
                 wrap.style.top = (origTop + dy) + 'px';
                 wrap.style.bottom = 'auto'; wrap.style.right = 'auto';
+                wrap.style.transform = 'none';
             }
         }
         function onUp() { dragging = false; }

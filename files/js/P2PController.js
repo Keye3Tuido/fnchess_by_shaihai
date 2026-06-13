@@ -20,6 +20,7 @@ class P2PController {
         port: 443,
         path: '/',
         secure: true,
+        key: 'peerjs',
         debug: 0
     };
 
@@ -67,10 +68,30 @@ class P2PController {
         this.iceServers = [
             { urls: 'stun:stun.cloudflare.com:3478' },
             { urls: 'stun:stun.qq.com:3478' },
-            { urls: 'stun:stun.miwifi.com:3478' },
-            { urls: 'stun:stun.l.google.com:19302' }
+            { urls: 'stun:stun.miwifi.com:3478' }
         ];
         this._codeChars = 'ABCDEFGHJKMNPRSTUVWXYZ23456789';
+        this._cachedIceServers = null;  // 服务端拉取的完整 ICE 配置缓存
+    }
+
+    // ─── 获取 ICE 配置（含 TURN 凭据，从 Render 服务端动态拉取） ───
+
+    async _fetchIceServers() {
+        if (this._cachedIceServers) return this._cachedIceServers;
+        const sig = P2PController.signaling;
+        const proto = sig.secure ? 'https' : 'http';
+        const portPart = (sig.port === 443 && sig.secure) || (sig.port === 80 && !sig.secure) ? '' : `:${sig.port}`;
+        const url = `${proto}://${sig.host}${portPart}/turn-config`;
+        try {
+            const resp = await fetch(url);
+            if (!resp.ok) throw new Error('HTTP ' + resp.status);
+            const data = await resp.json();
+            this._cachedIceServers = data.iceServers;
+        } catch (e) {
+            console.warn('[P2P] 获取中继配置失败，使用 STUN 兜底:', e.message);
+            this._cachedIceServers = this.iceServers; // STUN-only fallback
+        }
+        return this._cachedIceServers;
     }
 
     // ─── 房间码 ──────────────────────────────────────────────
@@ -84,7 +105,7 @@ class P2PController {
 
     // ─── 连接 ────────────────────────────────────────────────
 
-    createRoom() {
+    async createRoom() {
         if (this.isConnecting || this.isConnected) {
             this._notifyStatus('error', '已有进行中的连接');
             return;
@@ -96,7 +117,10 @@ class P2PController {
         this.opponentPlayerId = 'B';
         this.isConnecting = true;
         this._notifyStatus('connecting', '正在创建房间...');
-        this._startTimeout('创建房间超时，请检查网络后重试');
+        this._startTimeout('创建房间超时，请检查网络后重试', 45000);
+
+        const iceServers = await this._fetchIceServers();
+        if (!this.isConnecting) return; // 超时或用户取消
         try {
             const sig = P2PController.signaling;
             this.peer = new Peer(this.roomCode, {
@@ -105,7 +129,8 @@ class P2PController {
                 port: sig.port,
                 path: sig.path,
                 secure: sig.secure,
-                config: { iceServers: this.iceServers }
+                key: sig.key,
+                config: { iceServers }
             });
             this.peer.on('open', () => {
                 this._clearTimeout();
@@ -126,7 +151,7 @@ class P2PController {
         } catch (err) { this._handleError(err); }
     }
 
-    joinRoom(roomCode) {
+    async joinRoom(roomCode) {
         if (this.isConnecting || this.isConnected) {
             this._notifyStatus('error', '已有进行中的连接');
             return;
@@ -144,7 +169,10 @@ class P2PController {
         this.opponentPlayerId = 'A';
         this.isConnecting = true;
         this._notifyStatus('connecting', '正在连接房间...');
-        this._startTimeout('连接房间超时，请检查房间码和网络后重试');
+        this._startTimeout('连接房间超时，请检查房间码和网络后重试', 45000);
+
+        const iceServers = await this._fetchIceServers();
+        if (!this.isConnecting) return;
         try {
             const guestId = 'g_' + Math.random().toString(36).substr(2, 9);
             const sig = P2PController.signaling;
@@ -154,7 +182,8 @@ class P2PController {
                 port: sig.port,
                 path: sig.path,
                 secure: sig.secure,
-                config: { iceServers: this.iceServers }
+                key: sig.key,
+                config: { iceServers }
             });
             this.peer.on('open', () => {
                 const conn = this.peer.connect(normalized, { reliable: true });

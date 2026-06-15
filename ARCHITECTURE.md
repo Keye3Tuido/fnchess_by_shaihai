@@ -199,12 +199,23 @@ fnchess/
 │   ├── domain/    (10 files)     ← 功能模块：Board, Render, Round, Expression, Audio, Character, AI, Network, Scoring, CampaignStorage
 │   ├── core/      (5 files)      ← GameController, RoundStateMachine, GameTimer, GameHistoryService, P2PController
 │   ├── ai/        (11 files)     ← AIController, FunctionBuilder(s), TargetSelector, LearningSystem, SummaTrainer
-│   ├── modes/     (6 files)      ← ModeBase, LocalMode, AIMode, CampaignMode, P2PMode, TestMode
-│   └── ui/        (19 files)     ← UIController, AppController, AppView, 14 View 类, RandomChallengeUI, LevelEditorExtension, LevelEditorUI
+│   ├── modes/     (8 files)      ← ModeBase, LocalMode, AIMode, CampaignMode, P2PMode, TestMode, RandomLevelGenerator, SeedImporter
+│   └── ui/        (21 files)     ← UIController, AppController, AppView, 14 View 类, RandomChallengeUI, LevelEditorExtension, LevelEditorUI, LevelEditorEditMode, LevelEditorVerifyMode
 ├── assets/                        ← 图片/音效/BGM/字体/角色
 ├── styles/                        ← CSS
 └── geogebra-lite/                 ← 第三方采样库（CurvePlotter 等 12 个文件）
 ```
+
+### 模式文件拆分细节
+
+**RandomChallengeMode** (243行) — 随机关卡模式协调器
+- `RandomLevelGenerator` (142行) — 随机生成目标格/禁止格/锁定元素 + 权重算法
+- `SeedImporter` (101行) — 种子导入对话框 + 验证 + 解密
+
+**LevelEditorExtension** (100行) — 关卡编辑器协调器
+- `LevelEditorUI` (181行) — UI 构建、锁定元素编辑器、种子对话框
+- `LevelEditorEditMode` (192行) — 编辑模式：格子点击/拖拽、Canvas 交互
+- `LevelEditorVerifyMode` (122行) — 验证模式：关卡测试、结果处理
 
 ## 设计原则
 

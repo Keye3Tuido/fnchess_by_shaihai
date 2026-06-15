@@ -2,10 +2,10 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>函数棋 - Function Chess</title>
-    <link rel="stylesheet" href="files/css/style.css">
-    <link rel="stylesheet" href="files/css/shaihai-theme.css">
+    <link rel="stylesheet" href="styles/style.css">
+    <link rel="stylesheet" href="styles/shaihai-theme.css">
 </head>
 <body>
     <!-- 启动界面（仅首次加载时显示） -->
@@ -44,7 +44,7 @@
         </div>
 
         <button class="bgm-float-btn" id="bgm-open-btn" type="button" aria-label="背景音乐设置" title="背景音乐设置">
-            <img src="files/images/VolumeButton.png" alt="背景音乐设置" class="bgm-float-icon-img">
+            <img src="assets/images/VolumeButton.png" alt="背景音乐设置" class="bgm-float-icon-img">
         </button>
     </header>
     
@@ -121,7 +121,7 @@
             <div class="start-settings-layout">
                 <!-- 左侧：标题图片 + 难度/回合选择 -->
                 <div class="start-left-column">
-                    <img class="start-modal-title-image" src="files/images/MainTitle.png" alt="函数棋">
+                    <img class="start-modal-title-image" src="assets/images/MainTitle.png" alt="函数棋">
                     
                     <div class="start-selectors-left">
                         <div class="selector-row difficulty-select">
@@ -147,7 +147,7 @@
                 <div class="start-right-column">
                     <div class="start-top-actions">
                         <button class="bgm-float-btn start-bgm-btn" id="start-bgm-open-btn" type="button" aria-label="背景音乐设置" title="背景音乐设置">
-                            <img src="files/images/VolumeButton.png" alt="背景音乐设置" class="bgm-float-icon-img">
+                            <img src="assets/images/VolumeButton.png" alt="背景音乐设置" class="bgm-float-icon-img">
                         </button>
                     </div>
 
@@ -169,7 +169,7 @@
 
                     <div class="start-action-area">
                         <button class="start-image-btn" id="start-btn" type="button" aria-label="开始游戏">
-                            <img src="files/images/StartButton.png" alt="开始游戏">
+                            <img src="assets/images/StartButton.png" alt="开始游戏">
                         </button>
                     </div>
                 </div>
@@ -268,10 +268,7 @@
             <div class="winner-text" id="winner"></div>
             <div class="final-scores" id="final-scores"></div>
             <button class="btn btn-primary" id="view-report-btn" data-arrow style="width: 100%; margin-bottom: 10px;">查看游戏报告</button>
-            <div style="display:flex;gap:8px;">
-                <button class="btn btn-primary" id="p2p-rematch-btn" style="flex:1;display:none;">再来一局</button>
-                <button class="btn btn-primary" id="restart-btn" data-arrow style="flex:1;">返回主页</button>
-            </div>
+            <button class="btn btn-primary" id="restart-btn" data-arrow style="width: 100%;">返回主页</button>
         </div>
     </div>
 
@@ -309,7 +306,7 @@
     <!-- Summa训练选择弹窗 -->
     <div class="modal" id="summa-train-dialog" style="display: none;">
         <div class="modal-content summa-dialog-content">
-            <img class="summa-dialog-icon" src="files/Summa形象处理/summa_image/happy.PNG" alt="Summa 图标">
+            <img class="summa-dialog-icon" src="assets/character/happy.PNG" alt="Summa 图标">
             <h2 class="summa-dialog-title" id="summa-dialog-title">唤醒 Summa</h2>
             <p class="summa-dialog-message" id="summa-dialog-message"></p>
             
@@ -333,59 +330,165 @@
     
     <!-- 加载 JavaScript 模块 -->
     <!-- 响应式布局管理器（优先加载） -->
-    <script src="files/js/ResponsiveLayout.js"></script>
-    <script src="files/js/GridSystem.js"></script>
-    <script src="files/js/CollisionDetector.js"></script>
-    <script src="files/js/函数复杂度运算/function-complexity-analyzer.js"></script>
-    <script src="files/js/FunctionParser.js"></script>
+    <script src="scripts/ui/ResponsiveLayout.js"></script>
+    <script src="scripts/tools/GridSystem.js"></script>
+    <script src="scripts/tools/GridRenderer.js"></script>
+    <script src="scripts/render/CollisionDetector.js"></script>
+    <script src="scripts/tools/function-complexity-analyzer.js"></script>
+    <script src="scripts/tools/ComplexMath.js"></script>
+    <script src="scripts/tools/BitStream.js"></script>
+    <script src="scripts/tools/BitmapCodec.js"></script>
+    <script src="scripts/tools/HybridMapCodec.js"></script>
+    <script src="scripts/tools/SeedCrypto.js"></script>
+    <script src="scripts/tools/ExpressionAnalyzer.js"></script>
+    <script src="scripts/tools/FunctionParser.js"></script>
     <!-- geogebra-lite 核心引擎（采样+裁剪） -->
-    <script src="files/geogebra-lite/plot/Gap.js"></script>
-    <script src="files/geogebra-lite/plot/PathPlotter.js"></script>
-    <script src="files/geogebra-lite/plot/CurveSegmentInfo.js"></script>
-    <script src="files/geogebra-lite/plot/SegmentParams.js"></script>
-    <script src="files/geogebra-lite/plot/CurvePlotterStackItem.js"></script>
-    <script src="files/geogebra-lite/plot/CurvePlotterStack.js"></script>
-    <script src="files/geogebra-lite/plot/CurvePlotterUtils.js"></script>
-    <script src="files/geogebra-lite/plot/TupleNeighbours.js"></script>
-    <script src="files/geogebra-lite/plot/LabelPositionCalculator.js"></script>
-    <script src="files/geogebra-lite/plot/GeneralPathClippedForCurvePlotter.js"></script>
-    <script src="files/geogebra-lite/plot/CurveSegmentPlotter.js"></script>
-    <script src="files/geogebra-lite/plot/CurvePlotter.js"></script>
-    <script src="files/js/FunctionRenderer.js"></script>
+    <script src="geogebra-lite/Gap.js"></script>
+    <script src="geogebra-lite/PathPlotter.js"></script>
+    <script src="geogebra-lite/CurveSegmentInfo.js"></script>
+    <script src="geogebra-lite/SegmentParams.js"></script>
+    <script src="geogebra-lite/CurvePlotterStackItem.js"></script>
+    <script src="geogebra-lite/CurvePlotterStack.js"></script>
+    <script src="geogebra-lite/CurvePlotterUtils.js"></script>
+    <script src="geogebra-lite/TupleNeighbours.js"></script>
+    <script src="geogebra-lite/LabelPositionCalculator.js"></script>
+    <script src="geogebra-lite/GeneralPathClippedForCurvePlotter.js"></script>
+    <script src="geogebra-lite/CurveSegmentPlotter.js"></script>
+    <script src="geogebra-lite/CurvePlotter.js"></script>
+    <script src="scripts/render/PointSampler.js"></script>
+    <script src="scripts/render/DrawEngine.js"></script>
+    <script src="scripts/render/FunctionRenderer.js"></script>
     <!-- 全局音频管理器和角色管理器 -->
-    <script src="files/js/AudioManager.js"></script>
+    <script src="scripts/domain/AudioManager.js"></script>
     <!-- SummaAnimator 必须在 SummaCharacter 之前加载 -->
-    <script src="files/Summa形象处理/SummaAnimator.js"></script>
-    <script src="files/Summa形象处理/SummaCharacter.js"></script>
+    <script src="scripts/ui/SummaAnimator.js"></script>
+    <script src="scripts/ui/SummaCharacter.js"></script>
     
-    <!-- Ai和控制器 -->
-    <script src="files/js/AIController.js"></script>
-    <script src="files/js/GameController.js"></script>
-    <!-- P2P 联机对战 -->
-    <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js"></script>
-    <script>if(typeof Peer==='undefined'){document.write('<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"><\/script>');}</script>
-    <script src="files/js/P2PController.js"></script>
-    <script src="files/js/campaignLevels.js"></script>
-    <script src="files/js/UIController.js"></script>
-    <script src="files/js/SummaTrainer.js"></script>
+    <!-- Domain Layer -->
+    <script src="scripts/domain/ScoringModule.js"></script>
+    <script src="scripts/domain/AudioModule.js"></script>
+    <script src="scripts/domain/AudioModuleView.js"></script>
+    <script src="scripts/domain/CharacterModule.js"></script>
+    <script src="scripts/domain/BoardModule.js"></script>
+    <script src="scripts/domain/RenderModule.js"></script>
+    <script src="scripts/domain/RoundModule.js"></script>
+    <script src="scripts/domain/ExpressionModule.js"></script>
+
+    <!-- AI、控制器及拆分文件 -->
+        <script src="scripts/ai/AIFunctionBuilderSingle.js"></script>
+    <script src="scripts/ai/AIFunctionBuilderMulti.js"></script>
+    <script src="scripts/ai/AIFunctionBuilder.js"></script>
+    <script src="scripts/ai/AITargetSelector.js"></script>
+    <script src="scripts/ai/AIConstraintManager.js"></script>
+    <script src="scripts/ai/AILearningSystem.js"></script>
+    <script src="scripts/ai/AIExpressionHandler.js"></script>
+    <script src="scripts/ai/AIPersistence.js"></script>
+    <script src="scripts/ai/AIController.js"></script>
+    <script src="scripts/domain/AIModule.js"></script>
+    <script src="scripts/core/P2PController.js"></script>
+    <script src="scripts/domain/NetworkModule.js"></script>
+    <script src="scripts/core/RoundStateMachine.js"></script>
+    <script src="scripts/core/GameTimer.js"></script>
+    <script src="scripts/core/GameHistoryService.js"></script>
+    <script src="scripts/core/GameController.js"></script>
+    <script src="scripts/domain/campaignLevels.js"></script>
+
+    <!-- View Layer -->
+    <script src="scripts/ui/ModalService.js"></script>
+    <script src="scripts/ui/StartMenuView.js"></script>
+    <script src="scripts/ui/ExpressionView.js"></script>
+    <script src="scripts/ui/CanvasInteractionView.js"></script>
+    <script src="scripts/ui/TestModeView.js"></script>
+    <script src="scripts/domain/CampaignStorage.js"></script>
+    <script src="scripts/ui/CampaignView.js"></script>
+    <script src="scripts/ui/P2PView.js"></script>
+    <script src="scripts/ui/GameFlowView.js"></script>
+    <script src="scripts/ui/SummaDialogView.js"></script>
+    <script src="scripts/ai/AITurnHandler.js"></script>
+    <script src="scripts/ui/GameActionView.js"></script>
+    <script src="scripts/ui/GameEventView.js"></script>
+    <script src="scripts/ui/LevelEditorUI.js"></script>
+    <script src="scripts/ui/LevelEditorEditMode.js"></script>
+    <script src="scripts/ui/LevelEditorVerifyMode.js"></script>
+    <script src="scripts/ui/LevelEditorExtension.js"></script>
+    <script src="scripts/modes/RandomLevelGenerator.js"></script>
+    <script src="scripts/modes/SeedImporter.js"></script>
+    <script src="scripts/modes/RandomChallengeMode.js"></script>
+
+    <script src="scripts/ui/UIController.js"></script>
+
+    <script src="scripts/ai/SummaTrainer.js"></script>
+
+    <!-- Mode Layer -->
+    <script src="scripts/modes/ModeBase.js"></script>
+    <script src="scripts/ui/RandomChallengeUI.js"></script>
+    <script src="scripts/modes/LocalMode.js"></script>
+    <script src="scripts/modes/TestMode.js"></script>
+    <script src="scripts/modes/CampaignMode.js"></script>
+    <script src="scripts/modes/AIMode.js"></script>
+    <script src="scripts/modes/P2PMode.js"></script>
+
+    <!-- App Layer -->
+    <script src="scripts/ui/AppView.js"></script>
+    <script src="scripts/ui/AppController.js"></script>
     
     <script>
         // 初始化游戏
         document.addEventListener('DOMContentLoaded', () => {
-            // 创建核心组件
+            // ── Tool & Core ──
             const gridSystem = new GridSystem('game-canvas');
             const gameController = new GameController();
 
-            // 创建UI控制器
+            // ── UIController（内部创建 renderer / detector / aiController）──
             const uiController = new UIController(gridSystem, gameController);
-
-            // 创建Summa训练器
-            const summaTrainer = new SummaTrainer(gameController, gridSystem);
-
-            // 将训练器暴露到全局，方便控制台调用
-            window.summaTrainer = summaTrainer;
-            window.gameController = gameController;
             window.uiController = uiController;
+
+            // ── Domain: Audio / Board / Character ──
+            window.audioModule = new AudioModule();
+            window.audioModule.init(window.audioManager);
+
+            window.boardModule = new BoardModule();
+            window.boardModule.init();
+
+            window.characterModule = new CharacterModule();
+            window.characterModule.init(window.summaCharacter);
+
+            // ── Domain: Render / Round / Expression ──
+            window.renderModule = new RenderModule();
+            window.renderModule.init(gridSystem, uiController.renderer, uiController.detector);
+
+            window.roundModule = new RoundModule();
+            window.roundModule.init();
+
+            window.expressionModule = new ExpressionModule();
+            window.expressionModule.init();
+
+            // ── SummaTrainer & AIModule ──
+            const summaTrainer = new SummaTrainer(gameController, gridSystem);
+            window.summaTrainer = summaTrainer;
+
+            window.aiModule = new AIModule();
+            window.aiModule.init(uiController.aiController, summaTrainer);
+
+            // ── NetworkModule ──
+            const p2pController = new P2PController();
+            window.networkModule = new NetworkModule();
+            window.networkModule.init(p2pController);
+
+            // ── Mode Layer ──
+            window.localMode    = new LocalMode();
+            window.testMode     = new TestMode();
+            window.campaignMode = new CampaignMode();
+            window.aiMode       = new AIMode();
+            window.p2pMode      = new P2PMode();
+
+            // ── App Layer ──
+            const app = new AppController();
+            app.init();
+            window.app = app;
+            new AppView().init(app, uiController);
+
+            window.gameController = gameController;
 
             // ── 启动界面：点击后酷炫转场到主界面 ──
             const splash = document.getElementById('splash-screen');
@@ -479,12 +582,6 @@
             });
         })();
     </script>
-<script src="files/auto-solver.js"></script>
-<script src="files/js/BitStream.js"></script>
-<script src="files/js/BitmapCodec.js"></script>
-<script src="files/js/HybridMapCodec.js"></script>
-<script src="files/js/SeedCrypto.js"></script>
-<script src="files/js/LevelEditorExtension.js"></script>
-<script src="files/js/RandomChallengeMode.js"></script>
+<script src="scripts/tools/auto-solver.js"></script>
 </body>
 </html>

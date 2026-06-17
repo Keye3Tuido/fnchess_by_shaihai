@@ -168,16 +168,22 @@ class P2PView {
     }
 
     async _lobbyCreateRoom() {
+        // 清理旧房间（连续创建时防僵尸）
+        const oldCode = this.ui.p2pController?.roomCode;
+        if (oldCode) {
+            try { fetch(`https://${P2PController.signaling.host}/lobby/cancel`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({roomCode:oldCode}) }); } catch(e){}
+            this.ui.p2pController.disconnect();
+        }
         const rounds = parseInt(document.getElementById('lobby-rounds')?.value || 8, 10);
         const difficulty = document.getElementById('lobby-difficulty')?.value || 'normal';
         const code = await this._lobby?.createRoom(rounds, difficulty);
         if (!code) return;
-        // 记住大厅设置，_startP2PGame 会用
         this._lobbyGameRounds = rounds;
         this._lobbyGameDiff   = difficulty;
-        // 退出大厅 SSE
         this._lobby?.disconnect();
-        // 用获得的 roomCode 进入创建流程
+        // 重建 P2PController（旧 peer 已销毁）
+        this.ui.p2pController = new P2PController();
+        this._setupP2PCallbacks();
         this.ui.p2pController.roomCode = code;
         this._updateP2PStatus('connecting', `房间 ${code} 已发布到大厅，等待对手...`);
         document.getElementById('p2p-room-code-display').style.display = 'flex';

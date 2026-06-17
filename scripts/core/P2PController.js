@@ -81,9 +81,16 @@ class P2PController {
         const sig = P2PController.signaling;
         const proto = sig.secure ? 'https' : 'http';
         const portPart = (sig.port === 443 && sig.secure) || (sig.port === 80 && !sig.secure) ? '' : `:${sig.port}`;
-        const url = `${proto}://${sig.host}${portPart}/turn-config`;
         try {
-            const resp = await fetch(url);
+            // 步骤1：拿短期令牌
+            const ticketUrl = `${proto}://${sig.host}${portPart}/auth-ticket`;
+            const ticketResp = await fetch(ticketUrl);
+            if (!ticketResp.ok) throw new Error('ticket HTTP ' + ticketResp.status);
+            const { ticket, expires } = await ticketResp.json();
+
+            // 步骤2：凭票获取 ICE 配置
+            const configUrl = `${proto}://${sig.host}${portPart}/turn-config?ticket=${encodeURIComponent(ticket)}&expires=${expires}`;
+            const resp = await fetch(configUrl);
             if (!resp.ok) throw new Error('HTTP ' + resp.status);
             const data = await resp.json();
             this._cachedIceServers = data.iceServers;

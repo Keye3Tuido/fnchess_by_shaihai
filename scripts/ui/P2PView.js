@@ -47,8 +47,8 @@ class P2PView {
             tab?.classList.add('active');
             if(content) content.style.display='block';
         };
-        if(tc) tc.addEventListener('click',()=>{showTab(tc,cc); const ri=$('p2p-room-input'); if(ri)ri.value=''; const jb=$('p2p-join-btn'); if(jb)jb.disabled=false;});
-        if(tj) tj.addEventListener('click',()=>{showTab(tj,cj);});
+        if(tc) tc.addEventListener('click',()=>{showTab(tc,cc); this._lobby?.disconnect(); const ri=$('p2p-room-input'); if(ri)ri.value=''; const jb=$('p2p-join-btn'); if(jb)jb.disabled=false;});
+        if(tj) tj.addEventListener('click',()=>{showTab(tj,cj); this._lobby?.disconnect();});
         if(tl) tl.addEventListener('click',()=>{
             showTab(tl,cl);
             // 连接大厅
@@ -72,21 +72,7 @@ class P2PView {
         ui.p2pController.createRoom();
         document.getElementById('p2p-room-code-display').style.display='flex';
         document.getElementById('p2p-room-code-text').textContent=ui.p2pController.roomCode;
-        // 自动注册到大厅（互通）
-        this._registerToLobby(ui.p2pController.roomCode);
         if(window.audioManager)window.audioManager.playClick();
-    }
-
-    async _registerToLobby(roomCode) {
-        try {
-            const rounds = parseInt(this.ui.roundSelect?.value || 8, 10);
-            const diff = this.ui.difficultySelect?.value || 'normal';
-            await fetch(`https://${P2PController.signaling.host}/lobby/register`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ roomCode, rounds, difficulty: diff })
-            });
-        } catch (e) { /* 大厅不可用时静默 */ }
     }
 
     _joinP2PRoom() {
@@ -129,8 +115,11 @@ class P2PView {
         const p2pModal=document.getElementById('p2p-room-modal'); if(p2pModal)ui.hideModal(p2pModal);
         ui.hideModal(ui.startModal);
         if(ui.p2pController.isHost){
-            const rounds=parseInt(ui.roundSelect?.value||ui.roundOptions?.[ui.currentRoundIndex||0]?.value||8,10);
-            const diff=ui.difficultySelect?.value||ui.difficultyOptions?.[ui.currentDifficultyIndex||0]?.value||'normal';
+            // 优先用大厅设置，否则用开始菜单选择
+            const rounds = this._lobbyGameRounds || parseInt(ui.roundSelect?.value||ui.roundOptions?.[ui.currentRoundIndex||0]?.value||8,10);
+            const diff   = this._lobbyGameDiff   || ui.difficultySelect?.value||ui.difficultyOptions?.[ui.currentDifficultyIndex||0]?.value||'normal';
+            this._lobbyGameRounds = null;
+            this._lobbyGameDiff   = null;
             ui._p2pFirstPlayer='B'; ui._markGameActive?.(); ui.gameController.p2pTimerSync=false;
             ui.gameController.initGame(rounds,diff,'p2p','B');
             ui.p2pController.sendGameInit({rounds,difficulty:diff,firstPlayer:'B'});
@@ -181,6 +170,9 @@ class P2PView {
         const difficulty = document.getElementById('lobby-difficulty')?.value || 'normal';
         const code = await this._lobby?.createRoom(rounds, difficulty);
         if (!code) return;
+        // 记住大厅设置，_startP2PGame 会用
+        this._lobbyGameRounds = rounds;
+        this._lobbyGameDiff   = difficulty;
         // 退出大厅 SSE
         this._lobby?.disconnect();
         // 用获得的 roomCode 进入创建流程
@@ -209,6 +201,9 @@ class P2PView {
     async _lobbyQuickMatch() {
         const btn = document.getElementById('lobby-quick-btn');
         if (btn) { btn.disabled = true; btn.textContent = '⏳ 匹配中...'; }
+        // 匹配到后 Host 用自己的开始菜单设置
+        this._lobbyGameRounds = parseInt(this.ui.roundSelect?.value||this.ui.roundOptions?.[this.ui.currentRoundIndex||0]?.value||8,10);
+        this._lobbyGameDiff   = this.ui.difficultySelect?.value||this.ui.difficultyOptions?.[this.ui.currentDifficultyIndex||0]?.value||'normal';
         this._updateP2PStatus('connecting', '正在寻找对手...');
         await this._lobby?.quickMatch();
         if (btn) { btn.disabled = false; btn.textContent = '🎲 快速匹配'; }
@@ -353,6 +348,8 @@ class P2PView {
         this.ui._p2pMeWantRematch = false;
         this.ui._p2pThemWantRematch = false;
         this.ui._p2pFirstPlayer = 'B';
+        this._lobbyGameRounds = null;
+        this._lobbyGameDiff   = null;
     }
 
     _requestP2PRematch() {

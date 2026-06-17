@@ -19,6 +19,8 @@ class LobbyClient {
 
     /** 连接大厅 SSE 流 */
     connect(serverHost) {
+        // 防止重复连接泄露
+        if (this._es) { this._es.close(); this._es = null; }
         this._server = `https://${serverHost}/lobby`;
         this._notify('connecting', '正在连接大厅...');
         this._es = new EventSource(`${this._server}/stream`);

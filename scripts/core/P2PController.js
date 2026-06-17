@@ -158,6 +158,48 @@ class P2PController {
         } catch (err) { this._handleError(err); }
     }
 
+    /** 用大厅分配的 roomCode 创建房间（跳过随机生成） */
+    async createRoomWithCode(code) {
+        if (this.isConnecting || this.isConnected) {
+            this._notifyStatus('error', '已有进行中的连接');
+            return;
+        }
+        this._disconnecting = false;
+        this.roomCode = code;
+        this.isHost = true;
+        this.myPlayerId = 'A';
+        this.opponentPlayerId = 'B';
+        this.isConnecting = true;
+        this._notifyStatus('connecting', '正在创建房间...');
+        this._startTimeout('创建房间超时，请检查网络后重试', 45000);
+        const iceServers = await this._fetchIceServers();
+        if (!this.isConnecting) return;
+        try {
+            const sig = P2PController.signaling;
+            this.peer = new Peer(code, {
+                debug: sig.debug, host: sig.host, port: sig.port,
+                path: sig.path, secure: sig.secure, key: sig.key,
+                config: { iceServers }
+            });
+            this.peer.on('open', () => {
+                this._clearTimeout();
+                this._notifyStatus('waiting', '等待对手加入...');
+                this._startTimeout('等待对手超时', 60000);
+            });
+            this.peer.on('connection', (conn) => {
+                if (this.isConnected || this._guestConnecting) { conn.close(); return; }
+                this._guestConnecting = true;
+                this._clearTimeout();
+                this._setupConnection(conn);
+            });
+            this.peer.on('error', (err) => this._handleError(err));
+            this.peer.on('disconnected', () => {
+                if (this._disconnecting) return;
+                if (this.peer && !this.peer.destroyed) this.peer.reconnect();
+            });
+        } catch (err) { this._handleError(err); }
+    }
+
     async joinRoom(roomCode) {
         if (this.isConnecting || this.isConnected) {
             this._notifyStatus('error', '已有进行中的连接');

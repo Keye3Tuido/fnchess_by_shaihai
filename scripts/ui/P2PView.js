@@ -22,11 +22,16 @@ class P2PView {
         const inp=$('p2p-room-input'); if(inp)inp.value='';
         this._updateP2PStatus('idle','准备就绪');
         ui.showModal(document.getElementById('p2p-room-modal'));
+        // 初始化大厅客户端
+        if (typeof LobbyClient !== 'undefined') {
+            this._lobby = new LobbyClient();
+            this._setupLobbyCallbacks();
+        }
     }
 
     _createP2PRoomModal() {
         const modal=document.createElement('div'); modal.id='p2p-room-modal'; modal.className='modal'; modal.style.display='none';
-        modal.innerHTML='<div class="modal-content p2p-room-content"><h2>联机对战</h2><div class="p2p-status" id="p2p-status"><span class="p2p-status-dot"></span><span class="p2p-status-text">准备就绪</span></div><div class="p2p-tabs"><button class="p2p-tab active" id="p2p-tab-create">创建房间</button><button class="p2p-tab" id="p2p-tab-join">加入房间</button></div><div class="p2p-tab-content" id="p2p-tab-create-content"><p class="p2p-desc">创建房间后将获得一个6位房间码，分享给对手即可开始对战</p><div class="p2p-room-code-display" id="p2p-room-code-display" style="display:none;"><span class="p2p-label">房间码</span><span class="p2p-room-code" id="p2p-room-code-text">------</span><button class="btn btn-small p2p-copy-btn" id="p2p-copy-btn">复制</button></div><button class="btn btn-primary p2p-action-btn" id="p2p-create-btn">创建房间</button></div><div class="p2p-tab-content" id="p2p-tab-join-content" style="display:none;"><p class="p2p-desc">输入对手分享的6位房间码加入对战</p><div class="p2p-input-group"><input type="text" id="p2p-room-input" class="p2p-room-input" maxlength="6" placeholder="输入6位房间码" autocomplete="off"></div><button class="btn btn-primary p2p-action-btn" id="p2p-join-btn">加入房间</button></div><div class="p2p-battle-hint"><small>房主为<strong>玩家A</strong>，访客为<strong>玩家B</strong></small><br><small>双方轮流操作，玩法与本地对战一致</small></div><button class="btn btn-secondary p2p-back-btn" id="p2p-back-btn" style="width:100%;margin-top:8px;">返回</button></div>';
+        modal.innerHTML='<div class="modal-content p2p-room-content"><h2>联机对战</h2><div class="p2p-status" id="p2p-status"><span class="p2p-status-dot"></span><span class="p2p-status-text">准备就绪</span></div><div class="p2p-tabs"><button class="p2p-tab active" id="p2p-tab-create">创建房间</button><button class="p2p-tab" id="p2p-tab-join">加入房间</button><button class="p2p-tab" id="p2p-tab-lobby">匹配大厅</button></div><div class="p2p-tab-content" id="p2p-tab-create-content"><p class="p2p-desc">创建房间后将获得一个6位房间码，分享给对手即可开始对战</p><div class="p2p-room-code-display" id="p2p-room-code-display" style="display:none;"><span class="p2p-label">房间码</span><span class="p2p-room-code" id="p2p-room-code-text">------</span><button class="btn btn-small p2p-copy-btn" id="p2p-copy-btn">复制</button></div><button class="btn btn-primary p2p-action-btn" id="p2p-create-btn">创建房间</button></div><div class="p2p-tab-content" id="p2p-tab-join-content" style="display:none;"><p class="p2p-desc">输入对手分享的6位房间码加入对战</p><div class="p2p-input-group"><input type="text" id="p2p-room-input" class="p2p-room-input" maxlength="6" placeholder="输入6位房间码" autocomplete="off"></div><button class="btn btn-primary p2p-action-btn" id="p2p-join-btn">加入房间</button></div><div class="p2p-tab-content" id="p2p-tab-lobby-content" style="display:none;"><div class="lobby-header"><span class="lobby-online" id="lobby-online">🟢 大厅 0 人</span></div><div class="lobby-room-list" id="lobby-room-list"><p class="lobby-empty">暂无等待中的房间</p></div><div class="lobby-actions"><div class="lobby-create-row"><select id="lobby-rounds"><option value="8">8 局</option><option value="12">12 局</option><option value="16">16 局</option><option value="20">20 局</option></select><select id="lobby-difficulty"><option value="normal">普通</option><option value="easy">简单</option><option value="hard">困难</option><option value="expert">专家</option></select><button class="btn btn-primary" id="lobby-create-btn">创建公开房间</button></div><button class="btn btn-accent" id="lobby-quick-btn" style="width:100%;margin-top:4px;">🎲 快速匹配</button></div></div><div class="p2p-battle-hint"><small>房主为<strong>玩家A</strong>，访客为<strong>玩家B</strong></small><br><small>双方轮流操作，玩法与本地对战一致</small></div><button class="btn btn-secondary p2p-back-btn" id="p2p-back-btn" style="width:100%;margin-top:8px;">返回</button></div>';
         const sm=document.getElementById('start-modal'); sm.parentNode.insertBefore(modal,sm.nextSibling);
         this._bindP2PRoomEvents();
     }
@@ -34,13 +39,27 @@ class P2PView {
     _bindP2PRoomEvents() {
         const modal=document.getElementById('p2p-room-modal'); if(!modal)return;
         const $=id=>document.getElementById(id);
-        const tc=$('p2p-tab-create'),tj=$('p2p-tab-join'),cc=$('p2p-tab-create-content'),cj=$('p2p-tab-join-content');
-        if(tc&&tj&&cc&&cj){
-            tc.addEventListener('click',()=>{tc.classList.add('active');tj.classList.remove('active');cc.style.display='block';cj.style.display='none';const ri=$('p2p-room-input');if(ri)ri.value='';const jb=$('p2p-join-btn');if(jb)jb.disabled=false;});
-            tj.addEventListener('click',()=>{tj.classList.add('active');tc.classList.remove('active');cj.style.display='block';cc.style.display='none';});
-        }
+        const tc=$('p2p-tab-create'),tj=$('p2p-tab-join'),tl=$('p2p-tab-lobby');
+        const cc=$('p2p-tab-create-content'),cj=$('p2p-tab-join-content'),cl=$('p2p-tab-lobby-content');
+        const showTab = (tab, content) => {
+            [tc,tj,tl].forEach(t => t?.classList.remove('active'));
+            [cc,cj,cl].forEach(c => { if(c) c.style.display='none'; });
+            tab?.classList.add('active');
+            if(content) content.style.display='block';
+        };
+        if(tc) tc.addEventListener('click',()=>{showTab(tc,cc); const ri=$('p2p-room-input'); if(ri)ri.value=''; const jb=$('p2p-join-btn'); if(jb)jb.disabled=false;});
+        if(tj) tj.addEventListener('click',()=>{showTab(tj,cj);});
+        if(tl) tl.addEventListener('click',()=>{
+            showTab(tl,cl);
+            // 连接大厅
+            if (!this._lobby) { this._lobby = new LobbyClient(); this._setupLobbyCallbacks(); }
+            const host = P2PController.signaling?.host || 'fnchess.peerserver.keye3tuido.site';
+            this._lobby.connect(host);
+        });
         $('p2p-create-btn')?.addEventListener('click',()=>this._createP2PRoom());
         $('p2p-join-btn')?.addEventListener('click',()=>this._joinP2PRoom());
+        $('lobby-create-btn')?.addEventListener('click',()=>this._lobbyCreateRoom());
+        $('lobby-quick-btn')?.addEventListener('click',()=>this._lobbyQuickMatch());
         const ri=$('p2p-room-input');
         if(ri){ri.addEventListener('keydown',e=>{if(e.key==='Enter')this._joinP2PRoom();}); ri.addEventListener('input',e=>{e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'');});}
         $('p2p-copy-btn')?.addEventListener('click',()=>{const code=$('p2p-room-code-text')?.textContent||''; if(!code)return; if(navigator.clipboard?.writeText){navigator.clipboard.writeText(code).then(()=>this.ui.showMessage('房间码已复制！','success')).catch(()=>this.ui.showMessage('复制失败，请手动复制','warning'));}else{const ta=document.createElement('textarea');ta.value=code;ta.style.cssText='position:fixed;left:-9999px';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');this.ui.showMessage('房间码已复制！','success');}catch(e){this.ui.showMessage('复制失败，请手动复制: '+code,'warning');}document.body.removeChild(ta);}});
@@ -53,7 +72,21 @@ class P2PView {
         ui.p2pController.createRoom();
         document.getElementById('p2p-room-code-display').style.display='flex';
         document.getElementById('p2p-room-code-text').textContent=ui.p2pController.roomCode;
+        // 自动注册到大厅（互通）
+        this._registerToLobby(ui.p2pController.roomCode);
         if(window.audioManager)window.audioManager.playClick();
+    }
+
+    async _registerToLobby(roomCode) {
+        try {
+            const rounds = parseInt(this.ui.roundSelect?.value || 8, 10);
+            const diff = this.ui.difficultySelect?.value || 'normal';
+            await fetch(`https://${P2PController.signaling.host}/lobby/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ roomCode, rounds, difficulty: diff })
+            });
+        } catch (e) { /* 大厅不可用时静默 */ }
     }
 
     _joinP2PRoom() {
@@ -91,6 +124,8 @@ class P2PView {
 
     _startP2PGame() {
         const ui=this.ui;
+        // 连接已建立，从大厅销毁房间（无论公私，只剩 P2P 连接）
+        if (this._lobby) { this._lobby.cancel(ui.p2pController?.roomCode); this._lobby.disconnect(); this._lobby = null; }
         const p2pModal=document.getElementById('p2p-room-modal'); if(p2pModal)ui.hideModal(p2pModal);
         ui.hideModal(ui.startModal);
         if(ui.p2pController.isHost){
@@ -107,6 +142,97 @@ class P2PView {
         const el=document.getElementById('p2p-status'); if(!el)return;
         el.querySelector('.p2p-status-dot')?.setAttribute('class','p2p-status-dot '+status);
         const t=el.querySelector('.p2p-status-text'); if(t)t.textContent=message;
+    }
+
+    // ─── 大厅 ──────────────────────────────────────────────
+
+    _setupLobbyCallbacks() {
+        if (!this._lobby) return;
+        this._lobby.onRoomList = (rooms, online) => this._renderLobbyList(rooms, online);
+        this._lobby.onMatched = (data) => this._lobbyOnMatched(data);
+        this._lobby.onError   = (msg) => this.ui.showMessage(msg, 'warning');
+        this._lobby.onStatus  = (s, m) => {/* SSE 状态，静默 */};
+    }
+
+    _renderLobbyList(rooms, online) {
+        const countEl = document.getElementById('lobby-online');
+        if (countEl) countEl.textContent = `🟢 大厅 ${online} 人`;
+        const listEl = document.getElementById('lobby-room-list');
+        if (!listEl) return;
+        if (!rooms || rooms.length === 0) {
+            listEl.innerHTML = '<p class="lobby-empty">暂无等待中的房间，点击下方按钮创建</p>';
+            return;
+        }
+        const diffNames = { easy: '简单', normal: '普通', hard: '困难', expert: '专家' };
+        let html = '<table class="lobby-table"><tr><th>房间码</th><th>回合</th><th>难度</th><th></th></tr>';
+        for (const r of rooms) {
+            html += `<tr><td class="lobby-code">${r.roomCode}</td><td>${r.rounds} 局</td><td>${diffNames[r.difficulty] || r.difficulty}</td><td><button class="btn btn-small lobby-join-btn" data-room="${r.roomCode}">加入</button></td></tr>`;
+        }
+        html += '</table>';
+        listEl.innerHTML = html;
+        // 绑定加入按钮
+        listEl.querySelectorAll('.lobby-join-btn').forEach(btn => {
+            btn.addEventListener('click', () => this._lobbyJoinRoom(btn.dataset.room));
+        });
+    }
+
+    async _lobbyCreateRoom() {
+        const rounds = parseInt(document.getElementById('lobby-rounds')?.value || 8, 10);
+        const difficulty = document.getElementById('lobby-difficulty')?.value || 'normal';
+        const code = await this._lobby?.createRoom(rounds, difficulty);
+        if (!code) return;
+        // 退出大厅 SSE
+        this._lobby?.disconnect();
+        // 用获得的 roomCode 进入创建流程
+        this.ui.p2pController.roomCode = code;
+        this._updateP2PStatus('connecting', `房间 ${code} 已发布到大厅，等待对手...`);
+        document.getElementById('p2p-room-code-display').style.display = 'flex';
+        document.getElementById('p2p-room-code-text').textContent = code;
+        // 切回创建房间 tab 显示房间码
+        document.getElementById('p2p-tab-create')?.click();
+        this.ui.p2pController.createRoomWithCode?.(code);
+        if (window.audioManager) window.audioManager.playClick();
+    }
+
+    async _lobbyJoinRoom(code) {
+        if (!code) return;
+        const info = await this._lobby?.joinRoom(code);
+        if (!info) return;
+        this._lobby?.disconnect();
+        document.getElementById('p2p-tab-join')?.click();
+        const inp = document.getElementById('p2p-room-input');
+        if (inp) inp.value = code;
+        this.ui.p2pController.joinRoom(code);
+        if (window.audioManager) window.audioManager.playClick();
+    }
+
+    async _lobbyQuickMatch() {
+        const btn = document.getElementById('lobby-quick-btn');
+        if (btn) { btn.disabled = true; btn.textContent = '⏳ 匹配中...'; }
+        this._updateP2PStatus('connecting', '正在寻找对手...');
+        await this._lobby?.quickMatch();
+        if (btn) { btn.disabled = false; btn.textContent = '🎲 快速匹配'; }
+    }
+
+    _lobbyOnMatched(data) {
+        this._lobby?.disconnect();
+        if (data.isHost) {
+            // 我是房主：创建房间并等待
+            this.ui.p2pController.roomCode = data.roomCode;
+            this._updateP2PStatus('connecting', `匹配成功！房间 ${data.roomCode}，等待对手...`);
+            document.getElementById('p2p-room-code-display').style.display = 'flex';
+            document.getElementById('p2p-room-code-text').textContent = data.roomCode;
+            document.getElementById('p2p-tab-create')?.click();
+            this.ui.p2pController.createRoomWithCode?.(data.roomCode);
+        } else {
+            // 我是访客：加入房间
+            this._updateP2PStatus('connecting', '匹配成功！正在连接...');
+            document.getElementById('p2p-tab-join')?.click();
+            const inp = document.getElementById('p2p-room-input');
+            if (inp) inp.value = data.roomCode;
+            this.ui.p2pController.joinRoom(data.roomCode);
+        }
+        if (window.audioManager) window.audioManager.playClick();
     }
 
     _receiveGameInit(config) {
@@ -215,6 +341,7 @@ class P2PView {
     }
 
     _cleanupP2P() {
+        if (this._lobby) { this._lobby.disconnect(); this._lobby = null; }
         if (this.ui.p2pController) {
             this.ui.p2pController.disconnect();
             this.ui.p2pController = null;

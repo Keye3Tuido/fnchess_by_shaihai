@@ -29,7 +29,7 @@ class GameTimer {
     start(gameMode, campaignActive) {
         if (campaignActive || gameMode === 'test') return;
         this._timeoutHandled = false;
-        if (this.p2pTimerSync) return;
+        if (this._gc.p2pTimerSync) return;
 
         this.stop();
         this.remainingTime = this.timeLimit;
@@ -37,7 +37,7 @@ class GameTimer {
 
         // 委托 RoundModule（已有）
         if (window.roundModule) {
-            window.roundModule.startTimerFor(this.timeLimit, gameMode, this.p2pTimerSync);
+            window.roundModule.startTimerFor(this.timeLimit, gameMode, this._gc.p2pTimerSync);
             return;
         }
 
@@ -70,7 +70,7 @@ class GameTimer {
 
     /** P2P Guest：接收 Host 的计时同步 */
     syncRemote(remainingTime) {
-        if (!this.p2pTimerSync) return;
+        if (!this._gc.p2pTimerSync) return;
         this.remainingTime = remainingTime;
         this._gc.emit('timerUpdate', { remainingTime });
         if (remainingTime <= 0) this._applyRemoteTimeout();

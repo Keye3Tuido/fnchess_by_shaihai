@@ -107,27 +107,10 @@ class GameEventView {
             }
         });
 
-        // RoundModule 计时事件（优先于 GameController 的事件）
-        if (window.roundModule) {
-            window.roundModule.on('timerUpdate', (data) => {
-                if (window.audioManager && data.remainingTime > 0 && data.remainingTime <= 5) {
-                    window.audioManager.playTick();
-                }
-                ui.updateTimer(data.remainingTime);
-                if (ui.gameController.isP2PMode() && ui.p2pController && ui.p2pController.isHost) {
-                    ui.p2pController.sendTimerSync(data.remainingTime);
-                }
-            });
-            window.roundModule.on('timeout', (data) => {
-                if (window.audioManager) window.audioManager.playError();
-                ui.showMessage(`玩家${data.player}超时！扣1分`, 'error');
-                if (ui.gameController.isP2PMode() && ui.p2pController && ui.p2pController.isHost) {
-                    ui.p2pController.sendTimeout(data.player);
-                }
-                // 委托 GameController 推进阶段（超时 → 扣分 → SWITCH_PLAYER）
-                ui.gameController.handleTimeout();
-            });
-        }
+        // RoundModule 计时事件 — 由 bindRoundModule() 延迟绑定
+        // （RoundModule 在 GameEventView.bind() 之后才创建，
+        //   因此 index.html 在 RoundModule.init() 之后单独调用 bindRoundModule()）
+        this._tryBindRoundModule();
         
         ui.gameController.on('timeout', (data) => {
             if (window.audioManager) window.audioManager.playError();
@@ -352,6 +335,39 @@ class GameEventView {
             }
             finish();
         });
+    }
+
+    /**
+     * 绑定 RoundModule 的计时事件监听器。
+     * RoundModule 在 GameEventView.bind() 之后才创建，
+     * 因此 index.html 会在 RoundModule.init() 之后调用此方法。
+     */
+    bindRoundModule() {
+        const ui = this.ui;
+        if (!window.roundModule) return;
+        window.roundModule.on('timerUpdate', (data) => {
+            if (window.audioManager && data.remainingTime > 0 && data.remainingTime <= 5) {
+                window.audioManager.playTick();
+            }
+            ui.updateTimer(data.remainingTime);
+            if (ui.gameController.isP2PMode() && ui.p2pController && ui.p2pController.isHost) {
+                ui.p2pController.sendTimerSync(data.remainingTime);
+            }
+        });
+        window.roundModule.on('timeout', (data) => {
+            if (window.audioManager) window.audioManager.playError();
+            ui.showMessage(`玩家${data.player}超时！扣1分`, 'error');
+            if (ui.gameController.isP2PMode() && ui.p2pController && ui.p2pController.isHost) {
+                ui.p2pController.sendTimeout(data.player);
+            }
+            // 委托 GameController 推进阶段（超时 → 扣分 → SWITCH_PLAYER）
+            ui.gameController.handleTimeout();
+        });
+    }
+
+    /** bind() 内调用：RoundModule 已存在则立即绑定（正常顺序时的兼容路径） */
+    _tryBindRoundModule() {
+        if (window.roundModule) this.bindRoundModule();
     }
 }
 if(typeof module!=='undefined'&&module.exports)module.exports=GameEventView;

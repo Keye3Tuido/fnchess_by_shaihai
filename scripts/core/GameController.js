@@ -38,7 +38,8 @@ class GameController {
 
     // ─── 游戏初始化 ────────────────────────────────────────────────────────────
     initGame(rounds=8, difficulty='normal', gameMode='local', firstPlayer='B') {
-        this.p2pTimerSync = false; this._timeoutHandled = false;
+        if (gameMode !== 'p2p') this.p2pTimerSync = false;
+        this._timeoutHandled = false;
         Object.assign(this.campaignState, { active:false, levelPack:null, totalLevels:0, currentLevelId:1 });
         this.totalRounds = Math.min(Math.max(rounds,4),24);
         this.difficulty = difficulty;

@@ -144,17 +144,19 @@ class P2PView {
     }
 
     _renderLobbyList(rooms, online) {
+        const myCode = this.ui.p2pController?.roomCode;
+        const filtered = rooms?.filter(r => r.roomCode !== myCode) || [];
         const countEl = document.getElementById('lobby-online');
         if (countEl) countEl.textContent = `🟢 大厅 ${online} 人`;
         const listEl = document.getElementById('lobby-room-list');
         if (!listEl) return;
-        if (!rooms || rooms.length === 0) {
+        if (filtered.length === 0) {
             listEl.innerHTML = '<p class="lobby-empty">暂无等待中的房间，点击下方按钮创建</p>';
             return;
         }
         const diffNames = { easy: '简单', normal: '普通', hard: '困难', expert: '专家' };
         let html = '<table class="lobby-table"><tr><th>房间码</th><th>回合</th><th>难度</th><th></th></tr>';
-        for (const r of rooms) {
+        for (const r of filtered) {
             html += `<tr><td class="lobby-code">${r.roomCode}</td><td>${r.rounds} 局</td><td>${diffNames[r.difficulty] || r.difficulty}</td><td><button class="btn btn-small lobby-join-btn" data-room="${r.roomCode}">加入</button></td></tr>`;
         }
         html += '</table>';
@@ -336,6 +338,11 @@ class P2PView {
     }
 
     _cleanupP2P() {
+        // 从大厅销毁自己的房间（防残留）
+        const code = this.ui.p2pController?.roomCode;
+        if (code && P2PController?.signaling?.host) {
+            try { fetch(`https://${P2PController.signaling.host}/lobby/cancel`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({roomCode:code}) }); } catch(e){}
+        }
         if (this._lobby) { this._lobby.disconnect(); this._lobby = null; }
         if (this.ui.p2pController) {
             this.ui.p2pController.disconnect();
